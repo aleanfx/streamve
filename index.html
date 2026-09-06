@@ -1,8 +1,8 @@
 <title>StreamVe</title>
 <meta name="description" content="Accesos a Netflix, Disney+, Max, Prime Video, Spotify y más en Venezuela. Garantía, entrega en minutos y renovación sin reconfigurar nada.">
 <meta name="theme-color" content="#201e1d">
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="assets/favicon.png"><!-- PNG 180x180, opcional -->
+<link rel="icon" href="assets/favicon.png" sizes="512x512">
+<link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap">
@@ -59,13 +59,11 @@
     position:sticky;top:0;z-index:20;background:var(--app);
   }
   .brand{
-    display:flex;align-items:center;gap:9px;
-    font-weight:800;font-size:15px;letter-spacing:.14em;line-height:1;
-    margin-right:auto;background:none;border:0;color:var(--ink);padding:0;
+    display:flex;align-items:center;
+    margin-right:auto;background:none;border:0;padding:0;
   }
-  .brand i{color:var(--accent);font-style:normal}
-  .brand-mark{height:26px;width:auto;display:block;flex:none}
-  @media (min-width:900px){.brand{font-size:17px}.brand-mark{height:32px}}
+  .brand-lockup{height:34px;width:auto;display:block}
+  @media (min-width:900px){.brand-lockup{height:44px}}
   .seg{display:flex;border:1px solid var(--line-2)}
   .seg button{
     font-weight:800;font-size:11px;letter-spacing:.06em;
@@ -403,8 +401,7 @@
 <div class="wrap">
   <header class="bar">
     <button class="brand" id="brand" aria-label="StreamVe — ir al inicio">
-      <img class="brand-mark" src="assets/logo-mark.svg" alt="" onerror="this.remove()">
-      <span>STREAM<i>·</i>VE</span>
+      <img class="brand-lockup" src="assets/logo-full.png" alt="StreamVe">
     </button>
     <div class="seg">
       <button id="tabPersonal" aria-pressed="true">PERSONAL</button>

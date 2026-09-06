@@ -17,3 +17,8 @@ node_modules/
 .env.local
 
 .vercel
+
+# Originales pesados de los renders (quedan locales, se versiona el optimizado)
+assets/logos/logo*.jpeg
+assets/logos/Crear_logo_*.png
+assets/cards/Colocar_*.jpeg
