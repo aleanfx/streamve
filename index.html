@@ -600,9 +600,8 @@ function vistaHome(){
   return `
   <section class="hero">
     <div class="hero-art grain"></div>
-    <video class="hero-video" autoplay muted loop playsinline poster="assets/hero.webp">
-      <source src="assets/hero.mp4" type="video/mp4">
-    </video>
+    <video class="hero-video" src="assets/hero.mp4" poster="assets/hero.webp"
+           autoplay muted loop playsinline preload="auto"></video>
     <div class="hero-grid"></div><div class="hero-veil"></div>
     <div class="hero-inner">
       <h1 class="display rise">NO SE<br>CAE.</h1>
@@ -801,6 +800,17 @@ function render(){
   $('#tabPersonal').setAttribute('aria-pressed', String(p !== 'mayorista'));
   $('#tabMayor').setAttribute('aria-pressed', String(p === 'mayorista'));
   ajustarFlechas();
+  arrancarVideo();
+}
+
+/* Un <video> insertado con innerHTML no siempre empieza a cargar solo:
+   hay que pedirle load() y disparar play() a mano. */
+function arrancarVideo(){
+  const v = document.querySelector('.hero-video');
+  if (!v) return;
+  v.load();
+  const p = v.play();
+  if (p && p.catch) p.catch(() => {});   // si el navegador bloquea, queda el póster
 }
 
 /* Las flechas solo aparecen si el rail realmente tiene contenido oculto */
