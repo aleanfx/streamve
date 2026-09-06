@@ -97,16 +97,25 @@
   }
   .hero-art{
     position:absolute;inset:0;
+    background-size:cover;background-position:center;
+    background-image:
+      radial-gradient(circle at 74% 6%, rgba(255,255,255,.16) 0%, transparent 34%),
+      radial-gradient(125% 95% at 78% 10%, #8a8482 0%, #4a4644 34%, #2a2726 62%, #121011 88%);
+    filter:grayscale(1) contrast(1.08);
+  }
+  .hero-grid{
+    position:absolute;inset:0;opacity:.55;
     background:
-      radial-gradient(120% 90% at 78% 12%, #6e6a68 0%, #3a3736 42%, #171514 78%),
-      repeating-linear-gradient(115deg,rgba(255,255,255,.045) 0 2px,transparent 2px 9px);
-    filter:grayscale(1) contrast(1.06);
+      repeating-linear-gradient(0deg,rgba(255,255,255,.055) 0 1px,transparent 1px 34px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.055) 0 1px,transparent 1px 34px);
+    -webkit-mask-image:radial-gradient(85% 70% at 70% 18%,#000 0%,transparent 78%);
+    mask-image:radial-gradient(85% 70% at 70% 18%,#000 0%,transparent 78%);
   }
   .hero-veil{
     position:absolute;inset:0;pointer-events:none;
     background:linear-gradient(to top,#201e1d 6%,rgba(32,30,29,.9) 58%,rgba(32,30,29,.35) 84%,rgba(32,30,29,.55) 100%);
   }
-  .hero > *:not(.hero-art):not(.hero-veil){position:relative}
+  .hero > *:not(.hero-art):not(.hero-veil):not(.hero-grid){position:relative}
   .hero h1{margin:0;font-size:clamp(44px,11vw,96px);line-height:.9;letter-spacing:-.035em;font-weight:800}
   .stock-flag{
     display:inline-block;font-weight:800;font-size:11px;letter-spacing:.18em;
@@ -133,13 +142,58 @@
     text-align:left;padding:0;border:0;color:var(--ink);width:100%;display:block;
   }
   .tile:hover{transform:translateY(-5px);outline:2px solid var(--accent)}
-  .art{position:relative;height:220px;overflow:hidden}
+  .art{position:relative;height:220px;overflow:hidden;background:#171514}
   .rail .art{height:240px}
-  .art-bg{position:absolute;inset:0;filter:grayscale(1) contrast(1.06)}
+  .art-bg{
+    position:absolute;inset:0;
+    filter:grayscale(1) contrast(1.06);
+    background-size:cover;background-position:center;
+    transition:transform .5s cubic-bezier(.2,.7,.3,1);
+  }
+  .tile:hover .art-bg,.dhero:hover .art-bg{transform:scale(1.045)}
   .art-veil{
     position:absolute;inset:0;
     background:linear-gradient(to top,rgba(20,18,17,.95) 0,rgba(20,18,17,.55) 46%,rgba(20,18,17,.05) 82%);
   }
+  /* Monograma fantasma: da peso gráfico sin usar marcas ajenas */
+  .art-mono{
+    position:absolute;right:-6px;top:-18px;
+    font-weight:800;font-size:150px;line-height:1;letter-spacing:-.06em;
+    color:rgba(255,255,255,.055);pointer-events:none;user-select:none;
+  }
+  /* Grano: hace que los degradados lean como fotografía, no como CSS */
+  .grain::after{
+    content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.42;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* Siete tramas monocromas — identifican cada servicio sin color ni logo */
+  .pat{position:absolute;inset:0;opacity:.5}
+  .pat-0{background:repeating-linear-gradient(58deg,rgba(255,255,255,.14) 0 1px,transparent 1px 7px)}
+  .pat-1{background:repeating-radial-gradient(circle at 76% 16%,rgba(255,255,255,.13) 0 1px,transparent 1px 16px)}
+  .pat-2{background:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.10) 0 1px,transparent 1px 20px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0 1px,transparent 1px 20px)}
+  .pat-3{background:radial-gradient(rgba(255,255,255,.17) 1.1px,transparent 1.2px) 0 0/11px 11px}
+  .pat-4{background:repeating-linear-gradient(122deg,rgba(255,255,255,.09) 0 14px,transparent 14px 34px)}
+  .pat-5{background:repeating-linear-gradient(180deg,rgba(255,255,255,.12) 0 2px,transparent 2px 6px)}
+  .pat-6{background:
+      repeating-linear-gradient(45deg,rgba(255,255,255,.10) 0 1px,transparent 1px 9px),
+      repeating-linear-gradient(-45deg,rgba(255,255,255,.10) 0 1px,transparent 1px 9px)}
+
+  /* aparición escalonada */
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .rise{animation:rise .42s cubic-bezier(.2,.7,.3,1) both}
+
+  /* banda de promesa */
+  .promesa{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+    border-bottom:1px solid var(--line);
+  }
+  .promesa > div{padding:16px var(--pad);border-right:1px solid var(--line)}
+  .promesa > div:last-child{border-right:0}
+  .promesa u{font-weight:800;font-size:9px;letter-spacing:.16em;color:var(--accent-400);text-decoration:none}
+  .promesa b{display:block;font-weight:800;font-size:17px;margin-top:6px;letter-spacing:-.01em}
+  .promesa span{font-size:12px;color:var(--mute)}
   .art-badge{
     position:absolute;top:10px;right:10px;
     font-weight:800;font-size:10px;letter-spacing:.06em;padding:3px 6px;
@@ -184,7 +238,8 @@
     display:flex;flex-direction:column;justify-content:flex-end;
     padding:22px var(--pad) 18px;min-height:clamp(260px,34vw,380px);
   }
-  .dhero > *:not(.art-bg):not(.hero-veil){position:relative}
+  .dhero > *:not(.art-bg):not(.hero-veil):not(.pat):not(.art-mono){position:relative}
+  .dhero .art-mono{font-size:min(280px,44vw);right:-14px;top:-40px}
   .dhero h2{margin:8px 0 0;font-size:clamp(36px,8vw,64px);line-height:.92;letter-spacing:-.035em;font-weight:800}
   .close{
     position:absolute;top:14px;right:14px;width:44px;height:44px;z-index:2;
@@ -310,6 +365,20 @@
     .track{grid-template-columns:1fr 1fr}
     .track > div:nth-child(2){border-right:0}
   }
+  @media (min-width:900px){
+    :root{--pad:28px}
+    .hero{min-height:clamp(460px,42vw,600px);padding:40px var(--pad) 34px}
+    .hero h1{font-size:clamp(76px,8.6vw,116px)}
+    .hero-chips{gap:8px}
+    .dhero{min-height:clamp(320px,26vw,420px)}
+    .promesa b{font-size:19px}
+    .rail .tile{width:232px}
+    .rail .art{height:288px}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+    .art{height:264px}
+    .art-name{font-size:28px}
+    .paybar{padding:18px var(--pad)}
+  }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -392,22 +461,28 @@ const nuevoCodigo = () => 'SV-' + (4100 + Math.floor(Math.random() * 900));
 
 function ir(p){ S.pantalla = p; window.scrollTo(0, 0); render(); }
 
-/* Arte por servicio: gradiente propio, sin logos de terceros. */
-function arte(x, i){
-  const tono = ['#5f5b59','#6b6664','#565251','#726d6a','#4f4b4a','#67615f','#5a5654'][i % 7];
-  return `background:
-      radial-gradient(115% 85% at 72% 15%, ${tono} 0%, #3a3736 46%, #171514 82%),
-      repeating-linear-gradient(${105 + i * 12}deg,rgba(255,255,255,.05) 0 2px,transparent 2px 10px)`;
+/* Arte por servicio.
+   Si el servicio trae `img`, se usa esa foto. Si no, se compone una trama
+   monocroma propia: identifica cada servicio sin usar marcas ajenas. */
+function artHTML(x, i, veil){
+  const tono = ['#6a6663','#767070','#5c5857','#7d7773','#565251','#6f6866','#615c5a'][i % 7];
+  const fondo = x.img
+    ? `background-image:linear-gradient(rgba(23,21,20,.2),rgba(23,21,20,.2)),url('${x.img}')`
+    : `background-image:radial-gradient(118% 88% at ${60 + i * 5}% 14%, ${tono} 0%, #3a3736 46%, #141211 84%)`;
+  return `
+    <div class="art-bg grain" style="${fondo}"></div>
+    ${x.img ? '' : `<div class="pat pat-${i % 7}"></div>`}
+    <div class="${veil || 'art-veil'}"></div>
+    <div class="art-mono">${esc(x.nombre.slice(0, 2).toUpperCase())}</div>`;
 }
 
 function tileHTML(x, i){
   const st = stockDe(x), bajo = st <= 5;
   const desde = usd(Math.min.apply(null, x.planes.map(p => p.precio)));
   const micro = CFG.garantiaDias + 'd · ' + CFG.ventanaEntrega + ' · ' + (x.renovable ? 'renovable' : 'no renovable');
-  return `<button class="tile" data-abrir="${x.id}">
+  return `<button class="tile rise" style="animation-delay:${Math.min(i, 7) * 45}ms" data-abrir="${x.id}">
     <div class="art">
-      <div class="art-bg" style="${arte(x, i)}"></div>
-      <div class="art-veil"></div>
+      ${artHTML(x, i)}
       <span class="art-badge" style="background:${bajo ? 'var(--accent)' : 'transparent'};color:${bajo ? 'var(--ink)' : 'var(--mute-2)'}">${bajo ? 'QUEDAN ' + st : st + ' LIBRES'}</span>
       <div class="art-name">${esc(x.nombre)}</div>
     </div>
@@ -430,8 +505,8 @@ function vistaHome(){
   ];
   return `
   <section class="hero">
-    <div class="hero-art"></div><div class="hero-veil"></div>
-    <h1 class="display">NO SE<br>CAE.</h1>
+    <div class="hero-art grain"></div><div class="hero-grid"></div><div class="hero-veil"></div>
+    <h1 class="display rise">NO SE<br>CAE.</h1>
     <div><span class="stock-flag">EN STOCK AHORA · ${total} UNIDADES</span></div>
     <div class="hero-chips">
       <span class="chip">${CFG.garantiaDias} DÍAS DE GARANTÍA</span>
@@ -440,9 +515,15 @@ function vistaHome(){
     </div>
     <div class="hero-cta">
       <button class="btn btn-primary" data-ir="catalogo">VER CATÁLOGO</button>
-      <button class="btn btn-line" data-ir="mayorista">DESDE ${CFG.minMayorista} U.</button>
+      <a class="btn btn-line" href="https://wa.me/${CFG.whatsapp}?text=${encodeURIComponent('Hola, quiero preguntar por una cuenta.')}" target="_blank" rel="noopener">PREGUNTAR POR WHATSAPP</a>
     </div>
   </section>
+  <div class="promesa">
+    <div><u>GARANTÍA</u><b>${CFG.garantiaDias} días</b><span>Si se cae, la reponemos</span></div>
+    <div><u>REPOSICIÓN</u><b>Menos de 1 h</b><span>No esperás al día siguiente</span></div>
+    <div><u>RENOVACIÓN</u><b>Misma clave</b><span>No reconfigurás el televisor</span></div>
+    <div><u>ATENCIÓN</u><b>Hasta medianoche</b><span>Que es cuando falla</span></div>
+  </div>
   ${rails.map(r => `
     <div class="rail-head"><b>${r.t}</b><span>${r.n}</span></div>
     <div class="rail">${r.items.map((x, i) => tileHTML(x, i)).join('')}</div>
@@ -470,7 +551,7 @@ function vistaDetalle(){
   const t = totalActual();
   return `
   <section class="dhero">
-    <div class="art-bg" style="${arte(x, i)}"></div><div class="hero-veil"></div>
+    ${artHTML(x, i, 'hero-veil')}
     <button class="close" data-cerrar="1" aria-label="Cerrar">✕</button>
     <div class="kicker">${esc(x.cat)}</div>
     <h2 class="display">${esc(x.nombre)}</h2>
