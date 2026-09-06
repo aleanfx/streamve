@@ -1,0 +1,660 @@
+<title>StreamVe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap">
+
+<style>
+  /* ── Modernist tokens (design system) ─────────────────────────────
+     Single-theme by design: the app is the dark inversion of the system.
+     Every color is painted explicitly so it holds on any host ground. */
+  :root{
+    --accent:#ec3013;
+    --accent-300:#ffc4b8;
+    --accent-400:#ff9783;
+    --accent-600:#dd2b0f;
+
+    --app:#201e1d;          /* main surface (system --color-text, inverted) */
+    --panel:#2d2b2b;        /* neutral-900 — bars, tiles */
+    --tile:#444141;         /* neutral-800 */
+    --line:#444141;         /* hairlines */
+    --line-2:#605d5d;       /* neutral-700 — control borders */
+    --mute:#9b9797;         /* neutral-500 */
+    --mute-2:#bab6b6;       /* neutral-400 */
+    --dim:#7d7979;          /* neutral-600 */
+    --ink:#f3f2f2;          /* neutral bg, used as ink on dark */
+    --black:#000;
+
+    --f:"Archivo",system-ui,-apple-system,sans-serif;
+    --pad:14px;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    background:var(--app);
+    color:var(--ink);
+    font-family:var(--f);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  button,input{font:inherit;font-family:var(--f)}
+  button{cursor:pointer;border-radius:0}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  ::selection{background:var(--accent);color:var(--ink)}
+
+  .wrap{max-width:1120px;margin:0 auto;min-height:100vh;background:var(--app)}
+
+  /* ── header ── */
+  .bar{
+    display:flex;align-items:center;gap:12px;
+    padding:12px var(--pad);
+    border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:20;background:var(--app);
+  }
+  .brand{
+    font-weight:800;font-size:15px;letter-spacing:.14em;line-height:1;
+    margin-right:auto;background:none;border:0;color:var(--ink);padding:0;
+  }
+  .brand i{color:var(--accent);font-style:normal}
+  .seg{display:flex;border:1px solid var(--line-2)}
+  .seg button{
+    font-weight:800;font-size:11px;letter-spacing:.06em;
+    padding:7px 12px;border:0;background:transparent;color:var(--mute-2);
+  }
+  .seg button + button{border-left:1px solid var(--line-2)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--app)}
+  .seg button.on-red[aria-pressed="true"]{background:var(--accent);color:var(--ink)}
+
+  /* ── shared bits ── */
+  .kicker{font-weight:800;font-size:10px;letter-spacing:.2em;color:var(--accent-400)}
+  .display{font-weight:800;line-height:.92;letter-spacing:-.035em}
+  .chip{
+    display:inline-block;font-weight:800;font-size:11px;letter-spacing:.04em;
+    padding:5px 9px;border:1px solid var(--line-2);color:var(--mute-2);
+  }
+  .btn{
+    font-weight:800;letter-spacing:.04em;font-size:14px;
+    padding:14px 18px;border:1px solid transparent;text-align:left;
+    background:transparent;color:var(--ink);
+  }
+  .btn-primary{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  .btn-primary:hover{background:var(--accent-600);border-color:var(--accent-600)}
+  .btn-line{border-color:var(--dim)}
+  .btn-line:hover{background:var(--tile)}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .mute{color:var(--mute)}
+  .hr{border:0;border-top:2px solid var(--accent);margin:0}
+
+  /* ── hero ── */
+  .hero{
+    position:relative;overflow:hidden;background:var(--black);
+    border-bottom:2px solid var(--accent);
+    display:flex;flex-direction:column;justify-content:flex-end;
+    padding:26px var(--pad) 22px;min-height:clamp(380px,46vw,520px);
+  }
+  .hero-art{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(120% 90% at 78% 12%, #6e6a68 0%, #3a3736 42%, #171514 78%),
+      repeating-linear-gradient(115deg,rgba(255,255,255,.045) 0 2px,transparent 2px 9px);
+    filter:grayscale(1) contrast(1.06);
+  }
+  .hero-veil{
+    position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(to top,#201e1d 6%,rgba(32,30,29,.9) 58%,rgba(32,30,29,.35) 84%,rgba(32,30,29,.55) 100%);
+  }
+  .hero > *:not(.hero-art):not(.hero-veil){position:relative}
+  .hero h1{margin:0;font-size:clamp(44px,11vw,96px);line-height:.9;letter-spacing:-.035em;font-weight:800}
+  .stock-flag{
+    display:inline-block;font-weight:800;font-size:11px;letter-spacing:.18em;
+    padding:5px 9px;background:var(--app);color:var(--accent-400);margin-top:12px;
+  }
+  .hero-chips{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 18px}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:2px}
+
+  /* ── rails & grid ── */
+  .rail-head{display:flex;align-items:baseline;gap:8px;padding:18px var(--pad) 10px}
+  .rail-head b{font-weight:800;font-size:13px;letter-spacing:.12em}
+  .rail-head span{font-size:11px;color:var(--mute)}
+  .rail{display:flex;gap:2px;overflow-x:auto;padding:0 var(--pad) 10px;scrollbar-width:none}
+  .rail::-webkit-scrollbar{display:none}
+  .rail .tile{flex:0 0 auto;width:188px}
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));
+    gap:2px;padding:0 var(--pad) 20px;
+  }
+
+  .tile{
+    background:var(--panel);outline:1px solid var(--line);
+    transition:transform .28s ease,outline-color .2s ease;
+    text-align:left;padding:0;border:0;color:var(--ink);width:100%;display:block;
+  }
+  .tile:hover{transform:translateY(-5px);outline:2px solid var(--accent)}
+  .art{position:relative;height:220px;overflow:hidden}
+  .rail .art{height:240px}
+  .art-bg{position:absolute;inset:0;filter:grayscale(1) contrast(1.06)}
+  .art-veil{
+    position:absolute;inset:0;
+    background:linear-gradient(to top,rgba(20,18,17,.95) 0,rgba(20,18,17,.55) 46%,rgba(20,18,17,.05) 82%);
+  }
+  .art-badge{
+    position:absolute;top:10px;right:10px;
+    font-weight:800;font-size:10px;letter-spacing:.06em;padding:3px 6px;
+  }
+  .art-name{
+    position:absolute;left:12px;right:12px;bottom:10px;
+    font-weight:800;font-size:24px;line-height:.92;letter-spacing:-.03em;
+  }
+  .rail .art-name{font-size:26px}
+  .tile-foot{padding:10px 12px;border-top:1px solid var(--line)}
+  .tile:hover .tile-foot{background:var(--tile)}
+  .tile-price{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .tile-price b{font-weight:800;font-size:19px;line-height:1}
+  .rail .tile-price b{font-size:20px}
+  .tile-price b small{font-size:11px;font-weight:400;color:var(--mute)}
+  .tile-price em{font-style:normal;font-weight:800;font-size:11px;color:var(--accent-400)}
+  .tile-micro{font-size:10px;color:var(--mute);margin-top:4px}
+
+  /* ── steps strip ── */
+  .steps{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    border-top:1px solid var(--line);margin-top:14px;
+  }
+  .steps > div{padding:16px var(--pad);border-right:1px solid var(--line)}
+  .steps > div:last-child{border-right:0}
+  .steps u{font-weight:800;font-size:11px;color:var(--accent);text-decoration:none}
+  .steps b{display:block;font-weight:800;font-size:15px;margin-top:5px}
+  .steps span{font-size:12px;color:var(--mute)}
+
+  /* ── filters ── */
+  .filters{display:flex;gap:2px;overflow-x:auto;padding:14px var(--pad);scrollbar-width:none}
+  .filters::-webkit-scrollbar{display:none}
+  .filters button{
+    font-weight:800;font-size:12px;letter-spacing:.06em;padding:8px 14px;flex:0 0 auto;
+    border:1px solid var(--line-2);background:transparent;color:var(--mute-2);
+  }
+  .filters button[aria-pressed="true"]{background:var(--ink);color:var(--app);border-color:var(--ink)}
+
+  /* ── detail ── */
+  .dhero{
+    position:relative;overflow:hidden;background:var(--black);
+    display:flex;flex-direction:column;justify-content:flex-end;
+    padding:22px var(--pad) 18px;min-height:clamp(260px,34vw,380px);
+  }
+  .dhero > *:not(.art-bg):not(.hero-veil){position:relative}
+  .dhero h2{margin:8px 0 0;font-size:clamp(36px,8vw,64px);line-height:.92;letter-spacing:-.035em;font-weight:800}
+  .close{
+    position:absolute;top:14px;right:14px;width:44px;height:44px;z-index:2;
+    border:1px solid var(--dim);background:rgba(32,30,29,.6);color:var(--ink);font-size:18px;
+  }
+  .stats{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .stats > div{padding:12px 8px;border-right:1px solid var(--line)}
+  .stats > div:last-child{border-right:0}
+  .stats small{display:block;font-size:9px;letter-spacing:.1em;color:var(--mute)}
+  .stats b{display:block;font-weight:800;font-size:17px;margin-top:3px}
+  .stats b i{font-size:11px;font-style:normal}
+
+  .opts{display:flex;flex-direction:column;gap:2px}
+  .opt{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    min-height:56px;padding:12px;border:1px solid var(--line-2);
+    background:transparent;color:var(--ink);
+  }
+  .opt b{font-weight:800;font-size:14px;letter-spacing:.02em}
+  .opt span{font-weight:800;font-size:17px}
+  .opt[aria-pressed="true"]{background:var(--ink);color:var(--app);border-color:var(--ink)}
+  .opt:not([aria-pressed="true"]):hover{background:var(--tile)}
+
+  .period{display:flex;gap:2px;margin-top:14px}
+  .period button{
+    flex:1;min-height:48px;padding:12px;text-align:left;font-weight:800;font-size:13px;
+    border:1px solid var(--line-2);background:transparent;color:var(--ink);
+  }
+  .period button small{font-weight:400;font-size:11px}
+  .period button[aria-pressed="true"]{background:var(--ink);color:var(--app);border-color:var(--ink)}
+  .period button:not([aria-pressed="true"]):hover{background:var(--tile)}
+
+  /* ── sticky footer bar ── */
+  .paybar{
+    position:sticky;bottom:0;z-index:10;
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+    padding:14px;background:var(--panel);border-top:2px solid var(--accent);
+  }
+  .paybar .amt{font-weight:800;font-size:28px;line-height:1}
+  .paybar .amt-sm{font-weight:800;font-size:26px;line-height:1}
+  .paybar small{display:block;font-size:11px;color:var(--mute)}
+
+  /* ── checkout ── */
+  .methods{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:0 var(--pad)}
+  .methods button{
+    text-align:left;padding:14px 12px;min-height:76px;
+    border:1px solid var(--line-2);background:transparent;color:var(--ink);
+  }
+  .methods b{display:block;font-weight:800;font-size:14px}
+  .methods span{font-size:11px;opacity:.75}
+  .methods button[aria-pressed="true"]{background:var(--ink);color:var(--app);border-color:var(--ink)}
+  .methods button:not([aria-pressed="true"]):hover{background:var(--tile)}
+
+  .paydata{margin:14px;border:1px solid var(--line);background:var(--panel)}
+  .paydata > div{
+    display:flex;justify-content:space-between;gap:10px;
+    padding:11px 12px;border-bottom:1px solid var(--line);font-size:13px;
+  }
+  .paydata > div:last-child{border-bottom:0}
+  .paydata b{font-weight:800}
+  .paydata .amt-red{font-weight:800;color:var(--accent-400)}
+
+  .fields{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;padding:0 var(--pad) 16px;
+  }
+  .fields input{
+    font-size:14px;min-height:48px;padding:10px 12px;
+    background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:0;
+  }
+  .fields input::placeholder{color:var(--dim)}
+
+  /* ── order ── */
+  .ohead{padding:26px var(--pad) 20px;background:var(--panel);border-bottom:2px solid var(--accent)}
+  .ohead h2{margin:10px 0 0;font-weight:800;font-size:clamp(26px,6vw,44px);line-height:.96;letter-spacing:-.02em}
+  .track{display:grid;grid-template-columns:repeat(4,1fr)}
+  .track > div{padding:14px 8px;border-right:1px solid var(--line)}
+  .track > div:last-child{border-right:0}
+  .track i{display:block;width:10px;height:10px}
+  .track b{display:block;font-weight:800;font-size:12px;margin-top:8px}
+  .track small{font-size:10px;color:var(--mute)}
+
+  /* ── wholesale ── */
+  .whead{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+    padding:14px;background:var(--panel);border-bottom:1px solid var(--line);
+  }
+  .whead b{display:block;font-weight:800;font-size:16px}
+  .whead small{font-size:11px;color:var(--mute)}
+  .wrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .wrow .nm{flex:1;min-width:0}
+  .wrow .nm b{display:block;font-weight:800;font-size:15px}
+  .wrow .nm small{font-size:10px;color:var(--mute)}
+  .wrow .pr{font-weight:800;font-size:16px;flex:none}
+  .step{display:flex;align-items:center;flex:none;border:1px solid var(--line-2)}
+  .step button{width:44px;height:44px;font-weight:800;font-size:17px;border:0;background:transparent;color:var(--ink)}
+  .step button.plus{background:var(--accent);color:var(--ink);border-left:1px solid var(--line-2)}
+  .step button.plus:hover{background:var(--accent-600)}
+  .step button.minus:hover{background:var(--tile)}
+  .step span{width:34px;text-align:center;font-weight:800;font-size:15px}
+  .hrow{
+    display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between;
+    padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;
+  }
+  .hrow b{font-weight:800}
+  .hrow .st{font-size:10px;letter-spacing:.06em;padding:3px 7px;border:1px solid var(--line-2);color:var(--mute-2)}
+  .login{padding:26px var(--pad) 28px;background:var(--panel)}
+  .login .form{display:flex;flex-direction:column;gap:10px;max-width:340px;margin-top:18px}
+  .login input{
+    font-size:14px;min-height:48px;padding:10px 12px;
+    background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:0;
+  }
+
+  .foot{padding:14px;border-top:1px solid var(--line);font-size:11px;color:var(--mute)}
+
+  @media (max-width:520px){
+    .stats{grid-template-columns:1fr 1fr}
+    .stats > div:nth-child(2){border-right:0}
+    .stats > div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+    .track{grid-template-columns:1fr 1fr}
+    .track > div:nth-child(2){border-right:0}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="bar">
+    <button class="brand" id="brand">STREAM<i>·</i>VE</button>
+    <div class="seg">
+      <button id="tabPersonal" aria-pressed="true">PERSONAL</button>
+      <button id="tabMayor" class="on-red" aria-pressed="false">MAYORISTA</button>
+    </div>
+  </header>
+  <main id="view"></main>
+  <div class="foot">
+    STREAM·VE · Reventa independiente de accesos. Sin afiliación con las plataformas. Precios en USD.
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   CONFIGURACIÓN — todo lo que se cambia sin tocar el resto del código
+   ═══════════════════════════════════════════════════════════════ */
+const CFG = {
+  garantiaDias:    30,
+  ventanaEntrega:  '8–20 min',
+  mostrarBolivares: true,
+  tasaBs:          36.5,
+  descuentoAnual:  0.15,     // 12 meses = −15%
+  minMayorista:    10,
+  whatsapp:        '584140000000',
+  binanceCorreo:   'pagos@streamve.com',
+  binanceRed:      'USDT · BEP20',
+  pmBanco:         '0102 Venezuela',
+  pmTelefono:      '0414 000 0000'
+};
+
+/* Catálogo. `mayor` es el precio unitario de mayorista. */
+const CAT = [
+  { id:'nx', nombre:'Netflix',     cat:'VIDEO',  renovable:true,  mayor:2.60,
+    planes:[{k:'pantalla',etq:'Pantalla',precio:3.50,stock:14},{k:'perfil',etq:'Perfil',precio:2.80,stock:9},{k:'completa',etq:'Cuenta completa',precio:11.00,stock:3}] },
+  { id:'dp', nombre:'Disney+',     cat:'VIDEO',  renovable:true,  mayor:2.20,
+    planes:[{k:'pantalla',etq:'Pantalla',precio:3.00,stock:11},{k:'completa',etq:'Cuenta completa',precio:9.00,stock:2}] },
+  { id:'mx', nombre:'Max',         cat:'VIDEO',  renovable:true,  mayor:2.05,
+    planes:[{k:'pantalla',etq:'Pantalla',precio:2.80,stock:8},{k:'completa',etq:'Cuenta completa',precio:8.50,stock:2}] },
+  { id:'pv', nombre:'Prime Video', cat:'VIDEO',  renovable:true,  mayor:1.85,
+    planes:[{k:'pantalla',etq:'Pantalla',precio:2.50,stock:6}] },
+  { id:'sp', nombre:'Spotify',     cat:'MÚSICA', renovable:true,  mayor:1.95,
+    planes:[{k:'perfil',etq:'Cuenta individual',precio:2.60,stock:17}] },
+  { id:'cr', nombre:'Crunchyroll', cat:'ANIME',  renovable:true,  mayor:1.60,
+    planes:[{k:'pantalla',etq:'Pantalla',precio:2.20,stock:5}] },
+  { id:'pp', nombre:'Paramount+',  cat:'VIDEO',  renovable:false, mayor:1.55,
+    planes:[{k:'pantalla',etq:'Pantalla',precio:2.10,stock:4}] }
+];
+
+const HIST = [
+  { codigo:'SV-4106', detalle:'12 u · Netflix, Disney+', estado:'ENTREGADO', monto:'$29,60' },
+  { codigo:'SV-4088', detalle:'20 u · Netflix, Spotify', estado:'ENTREGADO', monto:'$49,00' },
+  { codigo:'SV-4061', detalle:'10 u · Max',              estado:'ENTREGADO', monto:'$20,50' }
+];
+
+/* ── estado ── */
+const S = {
+  pantalla:'home', sid:'nx', planK:'pantalla', meses:1,
+  metodo:'binance', ref:'', wa:'', user:'distribuidora.oriente',
+  auth:false, filtro:'Todo', cant:{}, volverA:'home', codigo:null
+};
+
+/* ── helpers ── */
+const $  = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const usd = n => '$' + n.toFixed(2).replace('.', ',');
+const bs  = n => 'Bs ' + Math.round(n * CFG.tasaBs).toLocaleString('es-VE');
+const svc = () => CAT.find(s => s.id === S.sid) || CAT[0];
+const plan = () => { const s = svc(); return s.planes.find(p => p.k === S.planK) || s.planes[0]; };
+const stockDe = x => x.planes.reduce((a, p) => a + p.stock, 0);
+const totalActual = () => {
+  const bruto = plan().precio * (S.meses === 12 ? 12 : 1);
+  return S.meses === 12 ? bruto * (1 - CFG.descuentoAnual) : bruto;
+};
+const nuevoCodigo = () => 'SV-' + (4100 + Math.floor(Math.random() * 900));
+
+function ir(p){ S.pantalla = p; window.scrollTo(0, 0); render(); }
+
+/* Arte por servicio: gradiente propio, sin logos de terceros. */
+function arte(x, i){
+  const tono = ['#5f5b59','#6b6664','#565251','#726d6a','#4f4b4a','#67615f','#5a5654'][i % 7];
+  return `background:
+      radial-gradient(115% 85% at 72% 15%, ${tono} 0%, #3a3736 46%, #171514 82%),
+      repeating-linear-gradient(${105 + i * 12}deg,rgba(255,255,255,.05) 0 2px,transparent 2px 10px)`;
+}
+
+function tileHTML(x, i){
+  const st = stockDe(x), bajo = st <= 5;
+  const desde = usd(Math.min.apply(null, x.planes.map(p => p.precio)));
+  const micro = CFG.garantiaDias + 'd · ' + CFG.ventanaEntrega + ' · ' + (x.renovable ? 'renovable' : 'no renovable');
+  return `<button class="tile" data-abrir="${x.id}">
+    <div class="art">
+      <div class="art-bg" style="${arte(x, i)}"></div>
+      <div class="art-veil"></div>
+      <span class="art-badge" style="background:${bajo ? 'var(--accent)' : 'transparent'};color:${bajo ? 'var(--ink)' : 'var(--mute-2)'}">${bajo ? 'QUEDAN ' + st : st + ' LIBRES'}</span>
+      <div class="art-name">${esc(x.nombre)}</div>
+    </div>
+    <div class="tile-foot">
+      <div class="tile-price"><b>${desde}<small> /mes</small></b><em>VER →</em></div>
+      <div class="tile-micro">${esc(micro)}</div>
+    </div>
+  </button>`;
+}
+
+/* ═══ pantallas ═══ */
+
+function vistaHome(){
+  const total = CAT.reduce((a, x) => a + stockDe(x), 0);
+  const pick = ids => ids.map(id => CAT.find(x => x.id === id));
+  const rails = [
+    { t:'MÁS PEDIDOS',      n:'esta semana', items:pick(['nx','dp','sp','mx']) },
+    { t:'VIDEO',            n:'5 servicios', items:pick(['nx','dp','mx','pv','pp']) },
+    { t:'MÚSICA Y ANIME',   n:'renovable',   items:pick(['sp','cr']) }
+  ];
+  return `
+  <section class="hero">
+    <div class="hero-art"></div><div class="hero-veil"></div>
+    <h1 class="display">NO SE<br>CAE.</h1>
+    <div><span class="stock-flag">EN STOCK AHORA · ${total} UNIDADES</span></div>
+    <div class="hero-chips">
+      <span class="chip">${CFG.garantiaDias} DÍAS DE GARANTÍA</span>
+      <span class="chip">ENTREGA ${esc(CFG.ventanaEntrega)}</span>
+      <span class="chip">RENOVABLE</span>
+    </div>
+    <div class="hero-cta">
+      <button class="btn btn-primary" data-ir="catalogo">VER CATÁLOGO</button>
+      <button class="btn btn-line" data-ir="mayorista">DESDE ${CFG.minMayorista} U.</button>
+    </div>
+  </section>
+  ${rails.map(r => `
+    <div class="rail-head"><b>${r.t}</b><span>${r.n}</span></div>
+    <div class="rail">${r.items.map((x, i) => tileHTML(x, i)).join('')}</div>
+  `).join('')}
+  <div class="steps">
+    <div><u>01</u><b>Pagas</b><span>Binance o Pago Móvil</span></div>
+    <div><u>02</u><b>Entregamos</b><span>A mano, ${esc(CFG.ventanaEntrega)}</span></div>
+    <div><u>03</u><b>Ves</b><span>TV, teléfono, PC</span></div>
+    <div><u>04</u><b>Renovamos</b><span>Misma clave</span></div>
+  </div>`;
+}
+
+function vistaCatalogo(){
+  const cats = ['Todo','VIDEO','MÚSICA','ANIME'];
+  const lista = CAT.filter(x => S.filtro === 'Todo' || x.cat === S.filtro);
+  return `
+  <div class="filters">
+    ${cats.map(c => `<button data-filtro="${esc(c)}" aria-pressed="${S.filtro === c}">${c === 'Todo' ? 'TODO' : c}</button>`).join('')}
+  </div>
+  <div class="grid">${lista.map((x, i) => tileHTML(x, i)).join('')}</div>`;
+}
+
+function vistaDetalle(){
+  const x = svc(), p = plan(), i = CAT.indexOf(x);
+  const t = totalActual();
+  return `
+  <section class="dhero">
+    <div class="art-bg" style="${arte(x, i)}"></div><div class="hero-veil"></div>
+    <button class="close" data-cerrar="1" aria-label="Cerrar">✕</button>
+    <div class="kicker">${esc(x.cat)}</div>
+    <h2 class="display">${esc(x.nombre)}</h2>
+  </section>
+  <div class="stats">
+    <div><small>GARANTÍA</small><b>${CFG.garantiaDias}<i> días</i></b></div>
+    <div><small>ENTREGA</small><b>${esc(CFG.ventanaEntrega)}</b></div>
+    <div><small>RENOVABLE</small><b style="color:${x.renovable ? 'var(--ink)' : 'var(--accent-400)'}">${x.renovable ? 'Sí' : 'No'}</b></div>
+    <div><small>QUEDAN</small><b style="color:${p.stock <= 5 ? 'var(--accent-400)' : 'var(--ink)'}">${p.stock} u.</b></div>
+  </div>
+  <div style="padding:18px var(--pad)">
+    <div class="opts">
+      ${x.planes.map(pl => `<button class="opt" data-plan="${pl.k}" aria-pressed="${pl.k === p.k}">
+        <b>${esc(pl.etq)}</b><span>${usd(pl.precio)}</span></button>`).join('')}
+    </div>
+    <div class="period">
+      <button data-meses="1"  aria-pressed="${S.meses === 1}">1 MES</button>
+      <button data-meses="12" aria-pressed="${S.meses === 12}">12 MESES <small>−${Math.round(CFG.descuentoAnual * 100)}%</small></button>
+    </div>
+  </div>
+  <div class="paybar">
+    <div><div class="amt">${usd(t)}</div>${CFG.mostrarBolivares ? `<small>${bs(t)}</small>` : ''}</div>
+    <button class="btn btn-primary" data-ir="checkout" style="padding:15px 20px;font-size:15px">COMPRAR</button>
+  </div>`;
+}
+
+function vistaCheckout(){
+  const x = svc(), p = plan(), t = totalActual();
+  const bin = S.metodo === 'binance';
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px var(--pad)">
+    <div>
+      <div class="kicker">PAGO</div>
+      <div style="font-weight:800;font-size:24px;line-height:1;margin-top:6px">${esc(x.nombre)} · ${esc(p.etq)}</div>
+      <div class="mute" style="font-size:12px;margin-top:4px">${S.meses === 12 ? '12 meses' : '1 mes'} · garantía ${CFG.garantiaDias} días</div>
+    </div>
+    <button class="close" style="position:static" data-ir="detalle" aria-label="Volver">✕</button>
+  </div>
+  <div class="methods">
+    <button data-metodo="binance" aria-pressed="${bin}"><b>BINANCE</b><span>USDT · BEP20</span></button>
+    <button data-metodo="pm" aria-pressed="${!bin}"><b>PAGO MÓVIL</b><span>Bs del día</span></button>
+  </div>
+  <div class="paydata">
+    <div><span class="mute">${bin ? 'Correo' : 'Banco'}</span><b>${esc(bin ? CFG.binanceCorreo : CFG.pmBanco)}</b></div>
+    <div><span class="mute">${bin ? 'Red' : 'Teléfono'}</span><b>${esc(bin ? CFG.binanceRed : CFG.pmTelefono)}</b></div>
+    <div><span class="mute">Monto exacto</span><b class="amt-red">${bin ? usd(t) + ' USDT' : bs(t)}</b></div>
+  </div>
+  <div class="fields">
+    <input id="fRef" placeholder="Referencia" value="${esc(S.ref)}">
+    <input id="fWa"  placeholder="WhatsApp"   value="${esc(S.wa)}">
+  </div>
+  <div class="paybar">
+    <div><div class="amt">${usd(t)}</div>${CFG.mostrarBolivares ? `<small>${bs(t)}</small>` : ''}</div>
+    <button class="btn btn-primary" data-confirmar="1" style="padding:15px 20px;font-size:15px">YA PAGUÉ</button>
+  </div>`;
+}
+
+function vistaPedido(){
+  const x = svc(), p = plan();
+  const hora = new Date().toLocaleTimeString('es-VE', { hour:'numeric', minute:'2-digit' });
+  const msg = encodeURIComponent(`Hola, soy ${S.wa || 'un cliente'}. Pedido ${S.codigo}: ${x.nombre} · ${p.etq} · ${S.meses === 12 ? '12 meses' : '1 mes'}. Referencia: ${S.ref || '(sin referencia)'}`);
+  return `
+  <div class="ohead">
+    <div class="kicker">PEDIDO ${esc(S.codigo)}</div>
+    <h2>Entregamos en ${esc(CFG.ventanaEntrega)}.</h2>
+    <div style="font-size:13px;color:var(--mute-2);margin-top:8px">Te escribimos por WhatsApp.</div>
+  </div>
+  <div class="track">
+    <div><i style="background:var(--accent)"></i><b>Pago</b><small>${hora}</small></div>
+    <div><i style="background:var(--accent)"></i><b>Verificado</b><small>${hora}</small></div>
+    <div><i style="border:2px solid var(--accent-400)"></i><b>Preparando</b><small style="color:var(--accent-400)">en curso</small></div>
+    <div><i style="border:2px solid var(--line-2)"></i><b style="color:var(--dim)">Entregado</b><small style="color:var(--dim)">—</small></div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:2px;padding:16px var(--pad) 22px;border-top:1px solid var(--line)">
+    <a class="btn btn-primary" style="text-decoration:none;display:inline-block" href="https://wa.me/${CFG.whatsapp}?text=${msg}" target="_blank" rel="noopener">ABRIR WHATSAPP</a>
+    <button class="btn btn-line" data-ir="catalogo">SEGUIR VIENDO</button>
+  </div>`;
+}
+
+function vistaLogin(){
+  return `
+  <div class="login">
+    <div class="kicker">MAYORISTA · DESDE ${CFG.minMayorista} U.</div>
+    <div class="display" style="font-size:clamp(30px,7vw,52px);margin:10px 0 0">Precio<br>unitario.</div>
+    <div class="form">
+      <input id="fUser" value="${esc(S.user)}" placeholder="Usuario">
+      <input type="password" value="demo1234" placeholder="Contraseña">
+      <button class="btn btn-primary" data-entrar="1" style="padding:15px 18px;font-size:15px">ENTRAR</button>
+      <div class="mute" style="font-size:11px">Cuentas por aprobación · WhatsApp</div>
+    </div>
+  </div>`;
+}
+
+function vistaPanel(){
+  const filas = CAT.map(x => {
+    const c = S.cant[x.id] || 0, st = x.planes[0].stock, bajo = st <= 5;
+    return `<div class="wrow">
+      <div class="nm"><b>${esc(x.nombre)}</b><small>${esc(x.planes[0].etq)} · ${st} en stock</small></div>
+      <div class="pr" style="color:${bajo ? 'var(--accent-400)' : 'var(--ink)'}">${usd(x.mayor)}</div>
+      <div class="step">
+        <button class="minus" data-menos="${x.id}" aria-label="Quitar uno">−</button>
+        <span style="color:${c > 0 ? 'var(--accent-400)' : 'var(--mute)'}">${c}</span>
+        <button class="plus" data-mas="${x.id}" aria-label="Agregar uno">+</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const unidades = CAT.reduce((a, x) => a + (S.cant[x.id] || 0), 0);
+  const monto = CAT.reduce((a, x) => a + (S.cant[x.id] || 0) * x.mayor, 0);
+  const nota = unidades === 0 ? 'Suma cantidades'
+             : unidades < CFG.minMayorista ? 'Faltan ' + (CFG.minMayorista - unidades) + ' u.'
+             : 'Listo para enviar';
+  const listo = unidades >= CFG.minMayorista;
+
+  return `
+  <div class="whead">
+    <div><b>${esc(S.user)}</b><small>Stock hace 4 min · mínimo ${CFG.minMayorista} u.</small></div>
+    <button class="btn btn-line" data-repetir="1" style="padding:11px 14px;font-size:12px">REPETIR · 12 u · $29,60</button>
+  </div>
+  <div style="padding:0 var(--pad)">${filas}</div>
+  <div style="padding:16px var(--pad) 6px"><div style="font-weight:800;font-size:11px;letter-spacing:.12em;color:var(--mute)">ÚLTIMOS PEDIDOS</div></div>
+  <div style="padding:0 var(--pad) 16px">
+    ${HIST.map(h => `<div class="hrow"><b>${h.codigo}</b><span class="mute" style="font-size:11px">${esc(h.detalle)}</span><span class="st">${h.estado}</span><b>${h.monto}</b></div>`).join('')}
+  </div>
+  <div class="paybar">
+    <div><div class="amt-sm">${usd(monto)} · ${unidades} u.</div><small style="color:${listo ? 'var(--accent-400)' : 'var(--mute)'}">${nota}</small></div>
+    <button class="btn btn-primary" data-enviar="1" style="padding:15px 20px;font-size:15px" ${listo ? '' : 'disabled'}>ENVIAR</button>
+  </div>`;
+}
+
+/* ═══ render + eventos ═══ */
+function render(){
+  const p = S.pantalla;
+  const html =
+      p === 'home'      ? vistaHome()
+    : p === 'catalogo'  ? vistaCatalogo()
+    : p === 'detalle'   ? vistaDetalle()
+    : p === 'checkout'  ? vistaCheckout()
+    : p === 'pedido'    ? vistaPedido()
+    : p === 'mayorista' ? (S.auth ? vistaPanel() : vistaLogin())
+    : vistaHome();
+  $('#view').innerHTML = html;
+  $('#tabPersonal').setAttribute('aria-pressed', String(p !== 'mayorista'));
+  $('#tabMayor').setAttribute('aria-pressed', String(p === 'mayorista'));
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-ir],[data-abrir],[data-filtro],[data-plan],[data-meses],[data-metodo],[data-cerrar],[data-confirmar],[data-entrar],[data-mas],[data-menos],[data-repetir],[data-enviar]');
+  if (!t) return;
+  const d = t.dataset;
+
+  if (d.ir)      return ir(d.ir);
+  if (d.cerrar)  return ir(S.volverA === 'catalogo' ? 'catalogo' : 'home');
+  if (d.filtro){ S.filtro = d.filtro; return render(); }
+  if (d.plan)  { S.planK  = d.plan;   return render(); }
+  if (d.meses) { S.meses  = +d.meses; return render(); }
+  if (d.metodo){ S.metodo = d.metodo; return render(); }
+
+  if (d.abrir){
+    const x = CAT.find(s => s.id === d.abrir);
+    S.sid = x.id;
+    S.volverA = S.pantalla;
+    S.planK = x.planes.slice().sort((a, b) => a.precio - b.precio)[0].k;
+    return ir('detalle');
+  }
+  if (d.confirmar){ S.codigo = nuevoCodigo(); return ir('pedido'); }
+  if (d.entrar)   { S.auth = true; return ir('mayorista'); }
+  if (d.mas)      { const x = CAT.find(s => s.id === d.mas);
+                    S.cant[d.mas] = Math.min(x.planes[0].stock, (S.cant[d.mas] || 0) + 1); return render(); }
+  if (d.menos)    { S.cant[d.menos] = Math.max(0, (S.cant[d.menos] || 0) - 1); return render(); }
+  if (d.repetir)  { S.cant = { nx:8, dp:4 }; return render(); }
+  if (d.enviar)   { S.codigo = nuevoCodigo(); return ir('pedido'); }
+});
+
+/* inputs del checkout / login: guardar sin re-renderizar */
+document.addEventListener('input', e => {
+  if (e.target.id === 'fRef')  S.ref  = e.target.value;
+  if (e.target.id === 'fWa')   S.wa   = e.target.value;
+  if (e.target.id === 'fUser') S.user = e.target.value;
+});
+
+$('#brand').onclick        = () => ir('home');
+$('#tabPersonal').onclick  = () => ir('home');
+$('#tabMayor').onclick     = () => ir('mayorista');
+
+render();
+</script>

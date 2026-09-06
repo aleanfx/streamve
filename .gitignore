@@ -1,0 +1,17 @@
+# Bundle de Claude Design (referencia local, no va al repo)
+_handoff/
+*.zip
+
+# Prompts de trabajo en la raíz (la copia versionada vive en docs/)
+prompt-*.md
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Dependencias / build (para cuando haya backend)
+node_modules/
+.vercel
+.env
+.env.local
