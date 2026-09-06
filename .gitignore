@@ -24,3 +24,6 @@ assets/logos/Crear_logo_*.png
 assets/cards/*.jpeg
 assets/cards/*.jpg
 assets/cards/*.png
+
+# Video fuente de Flow (queda local; se versiona hero.mp4 optimizado)
+assets/Woman_*.mp4
