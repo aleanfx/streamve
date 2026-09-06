@@ -155,32 +155,39 @@
     position:absolute;inset:0;
     background:linear-gradient(to top,rgba(16,14,13,.96) 0,rgba(16,14,13,.72) 26%,rgba(16,14,13,.18) 62%,rgba(16,14,13,0) 88%);
   }
-  /* Monograma: es el motivo gráfico del tile, no un adorno.
-     Grande, recortado por el borde, en la lógica tipográfica del sistema. */
-  .art-mono{
-    position:absolute;right:-14px;top:-26px;
-    font-weight:800;font-size:172px;line-height:1;letter-spacing:-.07em;
-    color:rgba(255,255,255,.15);pointer-events:none;user-select:none;
-  }
-  .rail .art-mono{font-size:196px}
   /* Grano: hace que los degradados lean como fotografía, no como CSS */
   .grain::after{
     content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.42;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  /* Siete tramas monocromas — identifican cada servicio sin color ni logo */
-  .pat{position:absolute;inset:0;opacity:.9}
-  .pat-0{background:repeating-linear-gradient(58deg,rgba(255,255,255,.30) 0 1px,transparent 1px 8px)}
-  .pat-1{background:repeating-radial-gradient(circle at 78% 14%,rgba(255,255,255,.26) 0 1.5px,transparent 1.5px 20px)}
-  .pat-2{background:
-      repeating-linear-gradient(0deg,rgba(255,255,255,.20) 0 1px,transparent 1px 22px),
-      repeating-linear-gradient(90deg,rgba(255,255,255,.20) 0 1px,transparent 1px 22px)}
-  .pat-3{background:radial-gradient(rgba(255,255,255,.34) 1.4px,transparent 1.5px) 0 0/13px 13px}
-  .pat-4{background:repeating-linear-gradient(122deg,rgba(255,255,255,.17) 0 16px,transparent 16px 38px)}
-  .pat-5{background:repeating-linear-gradient(180deg,rgba(255,255,255,.24) 0 2px,transparent 2px 8px)}
-  .pat-6{background:
-      repeating-linear-gradient(45deg,rgba(255,255,255,.20) 0 1px,transparent 1px 11px),
-      repeating-linear-gradient(-45deg,rgba(255,255,255,.20) 0 1px,transparent 1px 11px)}
+  /* Tinte de marca sobre la foto en B&N: da reconocimiento a un metro
+     de distancia, antes de que el ojo llegue a leer el logo. */
+  .art-tint{position:absolute;inset:0;mix-blend-mode:color;opacity:.62}
+  .art-glow{
+    position:absolute;inset:0;
+    background:radial-gradient(46% 40% at 50% 43%,rgba(255,255,255,.26),transparent 72%);
+  }
+
+  /* Tarjeta de regalo — el único radio del sistema, porque representa
+     un objeto físico y sin él no lee como tarjeta. */
+  .gcard{
+    position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+    width:66%;max-width:184px;aspect-ratio:1/1.32;
+    background:#fff;border-radius:9px;
+    box-shadow:0 18px 40px rgba(0,0,0,.62),0 3px 10px rgba(0,0,0,.4);
+    display:grid;place-items:center;padding:20% 14% 14%;
+    transition:transform .45s cubic-bezier(.2,.7,.3,1);
+  }
+  .tile:hover .gcard{transform:translate(-50%,-50%) scale(1.055)}
+  .gcard-notch{
+    position:absolute;top:8.5%;left:50%;transform:translateX(-50%);
+    width:26%;height:6px;border-radius:3px;background:var(--brand);
+  }
+  .gcard-logo{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  .gcard-word{
+    font-weight:800;font-size:clamp(14px,3.6vw,21px);line-height:1.04;
+    letter-spacing:-.03em;text-align:center;color:var(--brand);
+  }
 
   /* aparición escalonada */
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -200,13 +207,10 @@
     position:absolute;top:10px;right:10px;
     font-weight:800;font-size:10px;letter-spacing:.06em;padding:3px 6px;
   }
-  .art-name{
-    position:absolute;left:12px;right:12px;bottom:10px;
-    font-weight:800;font-size:24px;line-height:.92;letter-spacing:-.03em;
-  }
-  .rail .art-name{font-size:26px}
-  .tile-foot{padding:10px 12px;border-top:1px solid var(--line)}
+  .tile-foot{padding:11px 12px 12px;border-top:1px solid var(--line)}
   .tile:hover .tile-foot{background:var(--tile)}
+  .tile-name{font-weight:800;font-size:17px;line-height:1.1;letter-spacing:-.02em;margin-bottom:6px}
+  .rail .tile-name{font-size:18px}
   .tile-price{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
   .tile-price b{font-weight:800;font-size:19px;line-height:1}
   .rail .tile-price b{font-size:20px}
@@ -240,8 +244,8 @@
     display:flex;flex-direction:column;justify-content:flex-end;
     padding:22px var(--pad) 18px;min-height:clamp(260px,34vw,380px);
   }
-  .dhero > *:not(.art-bg):not(.hero-veil):not(.pat):not(.art-mono){position:relative}
-  .dhero .art-mono{font-size:min(280px,44vw);right:-14px;top:-40px}
+  .dhero > *:not(.art-bg):not(.hero-veil):not(.art-tint):not(.art-glow):not(.gcard){position:relative}
+  .dhero .gcard{left:auto;right:6%;top:50%;width:auto;height:66%;aspect-ratio:1/1.32;max-width:none}
   .dhero h2{margin:8px 0 0;font-size:clamp(36px,8vw,64px);line-height:.92;letter-spacing:-.035em;font-weight:800}
   .close{
     position:absolute;top:14px;right:14px;width:44px;height:44px;z-index:2;
@@ -378,7 +382,7 @@
     .rail .art{height:288px}
     .grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
     .art{height:264px}
-    .art-name{font-size:28px}
+    .tile-name{font-size:19px}
     .paybar{padding:18px var(--pad)}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -416,21 +420,32 @@ const CFG = {
   pmTelefono:      '0414 000 0000'
 };
 
-/* Catálogo. `mayor` es el precio unitario de mayorista. */
+/* Catálogo.
+   `mayor`  precio unitario de mayorista
+   `color`  color de marca — tiñe la foto de fondo y la muesca de la tarjeta
+   `logo`   SVG en assets/logos/. Si falta, la tarjeta cae al nombre escrito
+   `img`    foto de fondo en assets/. Si falta, cae a la trama monocroma      */
 const CAT = [
   { id:'nx', nombre:'Netflix',     cat:'VIDEO',  renovable:true,  mayor:2.60,
+    color:'#E50914', logo:'assets/logos/netflix.svg',    img:'assets/nx.webp',
     planes:[{k:'pantalla',etq:'Pantalla',precio:3.50,stock:14},{k:'perfil',etq:'Perfil',precio:2.80,stock:9},{k:'completa',etq:'Cuenta completa',precio:11.00,stock:3}] },
   { id:'dp', nombre:'Disney+',     cat:'VIDEO',  renovable:true,  mayor:2.20,
+    color:'#113CCF', logo:'assets/logos/disney.svg',     img:'assets/dp.webp',
     planes:[{k:'pantalla',etq:'Pantalla',precio:3.00,stock:11},{k:'completa',etq:'Cuenta completa',precio:9.00,stock:2}] },
   { id:'mx', nombre:'Max',         cat:'VIDEO',  renovable:true,  mayor:2.05,
+    color:'#002BE7', logo:'assets/logos/max.svg',        img:'assets/mx.webp',
     planes:[{k:'pantalla',etq:'Pantalla',precio:2.80,stock:8},{k:'completa',etq:'Cuenta completa',precio:8.50,stock:2}] },
   { id:'pv', nombre:'Prime Video', cat:'VIDEO',  renovable:true,  mayor:1.85,
+    color:'#00A8E1', logo:'assets/logos/prime.svg',      img:'assets/pv.webp',
     planes:[{k:'pantalla',etq:'Pantalla',precio:2.50,stock:6}] },
   { id:'sp', nombre:'Spotify',     cat:'MÚSICA', renovable:true,  mayor:1.95,
+    color:'#1DB954', logo:'assets/logos/spotify.svg',    img:'assets/sp.webp',
     planes:[{k:'perfil',etq:'Cuenta individual',precio:2.60,stock:17}] },
   { id:'cr', nombre:'Crunchyroll', cat:'ANIME',  renovable:true,  mayor:1.60,
+    color:'#F47521', logo:'assets/logos/crunchyroll.svg', img:'assets/cr.webp',
     planes:[{k:'pantalla',etq:'Pantalla',precio:2.20,stock:5}] },
   { id:'pp', nombre:'Paramount+',  cat:'VIDEO',  renovable:false, mayor:1.55,
+    color:'#0064FF', logo:'assets/logos/paramount.svg',  img:'assets/pp.webp',
     planes:[{k:'pantalla',etq:'Pantalla',precio:2.10,stock:4}] }
 ];
 
@@ -466,16 +481,33 @@ function ir(p){ S.pantalla = p; window.scrollTo(0, 0); render(); }
 /* Arte por servicio.
    Si el servicio trae `img`, se usa esa foto. Si no, se compone una trama
    monocroma propia: identifica cada servicio sin usar marcas ajenas. */
+const TRAMAS = [
+  'repeating-linear-gradient(58deg,rgba(255,255,255,.22) 0 1px,transparent 1px 8px)',
+  'repeating-radial-gradient(circle at 78% 14%,rgba(255,255,255,.20) 0 1.5px,transparent 1.5px 20px)',
+  'repeating-linear-gradient(0deg,rgba(255,255,255,.15) 0 1px,transparent 1px 22px)',
+  'repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 13px)',
+  'repeating-linear-gradient(122deg,rgba(255,255,255,.13) 0 16px,transparent 16px 38px)',
+  'repeating-linear-gradient(180deg,rgba(255,255,255,.18) 0 2px,transparent 2px 8px)',
+  'repeating-linear-gradient(45deg,rgba(255,255,255,.15) 0 1px,transparent 1px 11px)'
+];
+
 function artHTML(x, i, veil){
   const tono = ['#b3aca8','#c2bbb6','#a29b98','#cac2bc','#98918e','#b8b0ac','#a8a09c'][i % 7];
-  const fondo = x.img
-    ? `background-image:linear-gradient(rgba(23,21,20,.2),rgba(23,21,20,.2)),url('${x.img}')`
-    : `background-image:radial-gradient(120% 92% at ${58 + i * 6}% 10%, ${tono} 0%, #6b6461 34%, #302c2b 66%, #141211 92%)`;
+  const base = `radial-gradient(120% 92% at ${58 + i * 6}% 10%, ${tono} 0%, #6b6461 34%, #302c2b 66%, #141211 92%)`;
+  /* La foto va como primera capa. Si el archivo todavía no existe, el
+     navegador simplemente no la pinta y quedan la trama y el degradado. */
+  const capas = (x.img ? `url('${x.img}'), ` : '') + TRAMAS[i % 7] + ', ' + base;
   return `
-    <div class="art-bg grain" style="${fondo}"></div>
-    ${x.img ? '' : `<div class="pat pat-${i % 7}"></div>`}
+    <div class="art-bg grain" style="background-image:${capas}"></div>
+    <div class="art-tint" style="background:${x.color}"></div>
+    <div class="art-glow"></div>
     <div class="${veil || 'art-veil'}"></div>
-    <div class="art-mono">${esc(x.nombre.slice(0, 2).toUpperCase())}</div>`;
+    <div class="gcard" style="--brand:${x.color}">
+      <span class="gcard-notch"></span>
+      <img class="gcard-logo" src="${x.logo}" alt="${esc(x.nombre)}" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <span class="gcard-word" style="display:none">${esc(x.nombre)}</span>
+    </div>`;
 }
 
 function tileHTML(x, i){
@@ -485,10 +517,10 @@ function tileHTML(x, i){
   return `<button class="tile rise" style="animation-delay:${Math.min(i, 7) * 45}ms" data-abrir="${x.id}">
     <div class="art">
       ${artHTML(x, i)}
-      <span class="art-badge" style="background:${bajo ? 'var(--accent)' : 'transparent'};color:${bajo ? 'var(--ink)' : 'var(--mute-2)'}">${bajo ? 'QUEDAN ' + st : st + ' LIBRES'}</span>
-      <div class="art-name">${esc(x.nombre)}</div>
+      <span class="art-badge" style="background:${bajo ? 'var(--accent)' : 'rgba(0,0,0,.45)'};color:${bajo ? 'var(--ink)' : 'var(--mute-2)'}">${bajo ? 'QUEDAN ' + st : st + ' LIBRES'}</span>
     </div>
     <div class="tile-foot">
+      <div class="tile-name">${esc(x.nombre)}</div>
       <div class="tile-price"><b>${desde}<small> /mes</small></b><em>VER →</em></div>
       <div class="tile-micro">${esc(micro)}</div>
     </div>
