@@ -153,32 +153,34 @@
   .tile:hover .art-bg,.dhero:hover .art-bg{transform:scale(1.045)}
   .art-veil{
     position:absolute;inset:0;
-    background:linear-gradient(to top,rgba(20,18,17,.95) 0,rgba(20,18,17,.55) 46%,rgba(20,18,17,.05) 82%);
+    background:linear-gradient(to top,rgba(16,14,13,.96) 0,rgba(16,14,13,.72) 26%,rgba(16,14,13,.18) 62%,rgba(16,14,13,0) 88%);
   }
-  /* Monograma fantasma: da peso gráfico sin usar marcas ajenas */
+  /* Monograma: es el motivo gráfico del tile, no un adorno.
+     Grande, recortado por el borde, en la lógica tipográfica del sistema. */
   .art-mono{
-    position:absolute;right:-6px;top:-18px;
-    font-weight:800;font-size:150px;line-height:1;letter-spacing:-.06em;
-    color:rgba(255,255,255,.055);pointer-events:none;user-select:none;
+    position:absolute;right:-14px;top:-26px;
+    font-weight:800;font-size:172px;line-height:1;letter-spacing:-.07em;
+    color:rgba(255,255,255,.15);pointer-events:none;user-select:none;
   }
+  .rail .art-mono{font-size:196px}
   /* Grano: hace que los degradados lean como fotografía, no como CSS */
   .grain::after{
     content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.42;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   /* Siete tramas monocromas — identifican cada servicio sin color ni logo */
-  .pat{position:absolute;inset:0;opacity:.5}
-  .pat-0{background:repeating-linear-gradient(58deg,rgba(255,255,255,.14) 0 1px,transparent 1px 7px)}
-  .pat-1{background:repeating-radial-gradient(circle at 76% 16%,rgba(255,255,255,.13) 0 1px,transparent 1px 16px)}
+  .pat{position:absolute;inset:0;opacity:.9}
+  .pat-0{background:repeating-linear-gradient(58deg,rgba(255,255,255,.30) 0 1px,transparent 1px 8px)}
+  .pat-1{background:repeating-radial-gradient(circle at 78% 14%,rgba(255,255,255,.26) 0 1.5px,transparent 1.5px 20px)}
   .pat-2{background:
-      repeating-linear-gradient(0deg,rgba(255,255,255,.10) 0 1px,transparent 1px 20px),
-      repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0 1px,transparent 1px 20px)}
-  .pat-3{background:radial-gradient(rgba(255,255,255,.17) 1.1px,transparent 1.2px) 0 0/11px 11px}
-  .pat-4{background:repeating-linear-gradient(122deg,rgba(255,255,255,.09) 0 14px,transparent 14px 34px)}
-  .pat-5{background:repeating-linear-gradient(180deg,rgba(255,255,255,.12) 0 2px,transparent 2px 6px)}
+      repeating-linear-gradient(0deg,rgba(255,255,255,.20) 0 1px,transparent 1px 22px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.20) 0 1px,transparent 1px 22px)}
+  .pat-3{background:radial-gradient(rgba(255,255,255,.34) 1.4px,transparent 1.5px) 0 0/13px 13px}
+  .pat-4{background:repeating-linear-gradient(122deg,rgba(255,255,255,.17) 0 16px,transparent 16px 38px)}
+  .pat-5{background:repeating-linear-gradient(180deg,rgba(255,255,255,.24) 0 2px,transparent 2px 8px)}
   .pat-6{background:
-      repeating-linear-gradient(45deg,rgba(255,255,255,.10) 0 1px,transparent 1px 9px),
-      repeating-linear-gradient(-45deg,rgba(255,255,255,.10) 0 1px,transparent 1px 9px)}
+      repeating-linear-gradient(45deg,rgba(255,255,255,.20) 0 1px,transparent 1px 11px),
+      repeating-linear-gradient(-45deg,rgba(255,255,255,.20) 0 1px,transparent 1px 11px)}
 
   /* aparición escalonada */
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -465,10 +467,10 @@ function ir(p){ S.pantalla = p; window.scrollTo(0, 0); render(); }
    Si el servicio trae `img`, se usa esa foto. Si no, se compone una trama
    monocroma propia: identifica cada servicio sin usar marcas ajenas. */
 function artHTML(x, i, veil){
-  const tono = ['#6a6663','#767070','#5c5857','#7d7773','#565251','#6f6866','#615c5a'][i % 7];
+  const tono = ['#b3aca8','#c2bbb6','#a29b98','#cac2bc','#98918e','#b8b0ac','#a8a09c'][i % 7];
   const fondo = x.img
     ? `background-image:linear-gradient(rgba(23,21,20,.2),rgba(23,21,20,.2)),url('${x.img}')`
-    : `background-image:radial-gradient(118% 88% at ${60 + i * 5}% 14%, ${tono} 0%, #3a3736 46%, #141211 84%)`;
+    : `background-image:radial-gradient(120% 92% at ${58 + i * 6}% 10%, ${tono} 0%, #6b6461 34%, #302c2b 66%, #141211 92%)`;
   return `
     <div class="art-bg grain" style="${fondo}"></div>
     ${x.img ? '' : `<div class="pat pat-${i % 7}"></div>`}
