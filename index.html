@@ -123,16 +123,26 @@
     filter:grayscale(1) contrast(1.08);
   }
   .hero-grid{
-    position:absolute;inset:0;opacity:.55;
+    position:absolute;inset:0;opacity:.16;
     background:
       repeating-linear-gradient(0deg,rgba(255,255,255,.055) 0 1px,transparent 1px 34px),
       repeating-linear-gradient(90deg,rgba(255,255,255,.055) 0 1px,transparent 1px 34px);
     -webkit-mask-image:radial-gradient(85% 70% at 70% 18%,#000 0%,transparent 78%);
     mask-image:radial-gradient(85% 70% at 70% 18%,#000 0%,transparent 78%);
   }
+  /* Velo lateral, no de abajo hacia arriba: oscurece el lado del titular
+     y deja respirar el centro y la derecha, que es donde está la toma. */
   .hero-veil{
     position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(to top,#201e1d 6%,rgba(32,30,29,.9) 58%,rgba(32,30,29,.35) 84%,rgba(32,30,29,.55) 100%);
+    background:
+      linear-gradient(to right,rgba(32,30,29,.96) 0%,rgba(32,30,29,.82) 26%,rgba(32,30,29,.34) 54%,rgba(32,30,29,.06) 78%,rgba(32,30,29,0) 100%),
+      linear-gradient(to top,#201e1d 0%,rgba(32,30,29,.62) 16%,rgba(32,30,29,.12) 38%,rgba(32,30,29,0) 58%);
+  }
+  @media (max-width:899px){
+    /* En vertical el texto ocupa todo el ancho: ahí sí conviene de abajo */
+    .hero-veil{
+      background:linear-gradient(to top,#201e1d 4%,rgba(32,30,29,.9) 52%,rgba(32,30,29,.3) 82%,rgba(32,30,29,.5) 100%);
+    }
   }
   .hero > .hero-inner{position:relative}
   .hero h1{margin:0;font-size:clamp(44px,11vw,96px);line-height:.9;letter-spacing:-.035em;font-weight:800}
