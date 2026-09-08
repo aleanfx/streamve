@@ -1,0 +1,173 @@
+/* StreamVe — paneles de gestión.
+   Se carga después de estilo.css y reusa sus tokens.
+
+   La tienda es cinematográfica; esto es una herramienta que se mira todos
+   los días. Densidad alta, cero adorno, y el estado se ve antes de leerse. */
+
+:root{
+  --vive:#5fbf7a;      /* semánticos, separados del acento de marca */
+  --avisa:#e0a92e;
+  --muere:#e05a45;
+  --panel-h:56px;
+}
+
+body.panel{background:#141212;overflow-x:visible}
+
+/* ── barra ── */
+.pbar{
+  position:sticky;top:0;z-index:30;background:#1a1817;
+  border-bottom:1px solid var(--line);
+}
+.pbar-in{
+  max-width:1560px;margin:0 auto;padding:0 var(--pad);
+  height:var(--panel-h);display:flex;align-items:center;gap:18px;
+}
+.pbar-logo{height:26px;width:auto;display:block}
+.pbar-rol{
+  font-size:9px;letter-spacing:.2em;font-weight:800;color:var(--app);
+  background:var(--accent);padding:4px 8px;border-radius:3px;
+}
+.pbar .hoy{margin-left:auto;font-size:12px;color:var(--mute);white-space:nowrap}
+
+/* ── navegación ── */
+.pnav{
+  background:#1a1817;border-bottom:1px solid var(--line);
+  position:sticky;top:var(--panel-h);z-index:29;
+}
+.pnav-in{
+  max-width:1560px;margin:0 auto;padding:0 var(--pad);
+  display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
+}
+.pnav-in::-webkit-scrollbar{display:none}
+.pnav button{
+  flex:0 0 auto;background:none;border:0;border-bottom:2px solid transparent;
+  color:var(--mute);font-size:12px;font-weight:800;letter-spacing:.08em;
+  padding:13px 14px;border-radius:0;transition:color .15s ease;
+}
+.pnav button:hover{color:var(--ink)}
+.pnav button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.pnav button i{
+  font-style:normal;font-size:10px;margin-left:6px;padding:1px 5px;border-radius:2px;
+  background:var(--accent);color:var(--app);vertical-align:1px;
+}
+
+.pmain{max-width:1560px;margin:0 auto;padding:22px var(--pad) 70px}
+
+/* ── alertas: lo único que pide acción, arriba de todo ── */
+.alertas{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:26px}
+.alerta{
+  text-align:left;padding:15px 16px;border-radius:var(--r-card);
+  border:1px solid var(--line);background:#1c1a19;color:var(--ink);
+  display:flex;flex-direction:column;gap:4px;
+  transition:border-color .18s ease,background .18s ease;
+}
+.alerta:hover{border-color:var(--mute);background:#211e1d}
+.alerta u{font-size:9px;letter-spacing:.18em;font-weight:800;color:var(--dim);text-decoration:none}
+.alerta b{font-size:30px;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.alerta span{font-size:12px;color:var(--mute)}
+.alerta.urgente{border-color:var(--muere)}
+.alerta.urgente b{color:var(--muere)}
+.alerta.ojo{border-color:var(--avisa)}
+.alerta.ojo b{color:var(--avisa)}
+.alerta.bien b{color:var(--vive)}
+
+/* ── bloques ── */
+.bloque{margin-bottom:30px}
+.bloque-tit{
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  padding-bottom:9px;margin-bottom:0;border-bottom:2px solid var(--ink);
+}
+.bloque-tit h2{margin:0;font-size:15px;font-weight:800;letter-spacing:.02em}
+.bloque-tit span{font-size:12px;color:var(--mute)}
+.bloque-tit .der{margin-left:auto;font-size:12px;color:var(--mute)}
+
+/* ── tablas ── */
+.tabla-cont{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px;min-width:620px}
+table.t th{
+  text-align:left;font-size:9px;letter-spacing:.16em;font-weight:800;color:var(--dim);
+  padding:11px 14px 9px 0;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+table.t td{padding:12px 14px 12px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+table.t tr:hover td{background:rgba(255,255,255,.022)}
+table.t td:last-child,table.t th:last-child{padding-right:0;text-align:right}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.prin{font-weight:800;font-size:14px;letter-spacing:-.01em}
+.sub{font-size:11.5px;color:var(--mute);margin-top:2px}
+
+/* punto de color del servicio, para ubicarlo sin leer */
+.punto{
+  display:inline-block;width:8px;height:8px;border-radius:2px;
+  margin-right:8px;vertical-align:0;flex:none;
+}
+
+/* ── estados ── */
+.chip-e{
+  display:inline-block;font-size:9.5px;letter-spacing:.1em;font-weight:800;
+  padding:3px 7px;border-radius:3px;white-space:nowrap;
+}
+.e-activa{background:rgba(95,191,122,.14);color:var(--vive)}
+.e-porVencer{background:rgba(224,169,46,.16);color:var(--avisa)}
+.e-vencida{background:rgba(224,90,69,.16);color:var(--muere)}
+.e-neutro{background:rgba(255,255,255,.07);color:var(--mute-2)}
+
+/* ── barra de tiempo restante ── */
+.tiempo{display:flex;align-items:center;gap:9px;min-width:150px}
+.tiempo-riel{flex:1;height:4px;background:rgba(255,255,255,.09);border-radius:2px;overflow:hidden}
+.tiempo-fill{height:100%;border-radius:2px}
+.tiempo span{font-size:11.5px;color:var(--mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* ── acciones ── */
+.acc{
+  font-size:11px;font-weight:800;letter-spacing:.06em;padding:7px 11px;
+  border:1px solid var(--line-2);background:transparent;color:var(--mute-2);
+  border-radius:var(--r);white-space:nowrap;transition:all .15s ease;
+}
+.acc:hover{color:var(--ink);border-color:var(--ink)}
+.acc.pri{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.acc.pri:hover{background:var(--accent-600);border-color:var(--accent-600)}
+.acc + .acc{margin-left:6px}
+
+/* ── capacidad de una cuenta madre ── */
+.cap{display:flex;align-items:center;gap:8px;min-width:120px}
+.cap-riel{display:flex;gap:2px}
+.cap-u{width:11px;height:11px;border-radius:2px;background:rgba(255,255,255,.11)}
+.cap-u.ocupado{background:var(--vive)}
+.cap-u.caido{background:var(--muere)}
+.cap span{font-size:11.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+
+/* ── dinero ── */
+.plata{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.plata > div{padding:18px;border:1px solid var(--line);border-radius:var(--r-card);background:#1c1a19}
+.plata u{font-size:9px;letter-spacing:.18em;font-weight:800;color:var(--dim);text-decoration:none}
+.plata b{display:block;font-size:30px;font-weight:800;margin-top:8px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.plata span{font-size:12px;color:var(--mute)}
+.plata .verde b{color:var(--vive)}
+
+/* ── vacío ── */
+.vacio{
+  padding:34px 0;text-align:center;color:var(--mute);font-size:13.5px;
+  border-bottom:1px solid var(--line);
+}
+.vacio b{display:block;font-size:15px;color:var(--mute-2);margin-bottom:4px}
+
+/* ── buscador ── */
+.buscador{
+  width:100%;max-width:340px;font-size:13.5px;padding:10px 12px;margin-bottom:14px;
+  background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:var(--r);
+}
+.buscador::placeholder{color:var(--dim)}
+
+/* ── filtros ── */
+.filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.filtros button{
+  font-size:11px;font-weight:800;letter-spacing:.06em;padding:7px 12px;
+  border:1px solid var(--line-2);background:transparent;color:var(--mute);
+  border-radius:var(--r);
+}
+.filtros button[aria-pressed="true"]{background:var(--ink);color:var(--app);border-color:var(--ink)}
+
+@media (max-width:720px){
+  .alerta b{font-size:25px}
+  .pmain{padding-top:16px}
+}
