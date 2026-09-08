@@ -223,7 +223,7 @@
   /* El padding vertical deja aire para que la tarjeta pueda levantarse en
      hover: el rail tiene overflow-x, que también recorta arriba y abajo. */
   .rail{
-    display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;
+    display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;
     padding:10px var(--pad) 14px;scrollbar-width:none;scroll-behavior:smooth;
   }
   .rail::-webkit-scrollbar{display:none}
@@ -243,7 +243,7 @@
   @media (hover:none){.rail-nav{display:none}}
   .grid{
     display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));
-    gap:2px;padding:10px var(--pad) 24px;
+    gap:10px;padding:10px var(--pad) 24px;
   }
 
   .tile{
