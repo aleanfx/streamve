@@ -39,6 +39,9 @@
   }
 
   *{box-sizing:border-box}
+  /* Una regla de clase le gana al [hidden] del navegador, así que hay que
+     declararlo explícito o los elementos ocultos siguen visibles. */
+  [hidden]{display:none!important}
 
   body{
     margin:0;
