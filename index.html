@@ -544,6 +544,40 @@
     background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:var(--r);
   }
 
+  /* ── portal de entrada ── se muestra una sola vez ── */
+  .portal{
+    position:fixed;inset:0;z-index:60;overflow-y:auto;
+    background:#141212;display:grid;place-items:center;padding:40px var(--pad);
+  }
+  .portal-bg{
+    position:absolute;inset:0;opacity:.16;
+    background:url('assets/fondo.webp') center/cover no-repeat;
+  }
+  .portal-in{position:relative;width:100%;max-width:820px}
+  .portal-logo{height:38px;width:auto;display:block;margin-bottom:34px}
+  .portal h2{margin:0;font-size:clamp(32px,6vw,58px)}
+  .portal > .portal-in > p{margin:16px 0 34px;color:var(--mute-2);font-size:15px;max-width:46ch}
+  .portal-ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .portal-ops button{
+    text-align:left;background:rgba(255,255,255,.035);color:var(--ink);
+    border:1px solid var(--line-2);border-radius:var(--r-card);
+    padding:24px 22px 20px;display:flex;flex-direction:column;gap:0;
+    transition:border-color .18s ease,background .18s ease,transform .18s ease;
+  }
+  .portal-ops button:hover{
+    border-color:var(--accent);background:rgba(236,48,19,.09);transform:translateY(-3px);
+  }
+  .portal-ops u{
+    font-size:9.5px;letter-spacing:.2em;font-weight:800;color:var(--accent-400);text-decoration:none;
+  }
+  .portal-ops b{font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:12px}
+  .portal-ops span{font-size:13.5px;color:var(--mute-2);line-height:1.45;margin-top:8px}
+  .portal-ops i{
+    font-style:normal;font-size:11px;font-weight:800;letter-spacing:.12em;
+    color:var(--dim);margin-top:20px;transition:color .18s ease;
+  }
+  .portal-ops button:hover i{color:var(--accent-400)}
+
   /* ── pie ── cierre de venta arriba, utilidad abajo ── */
   .pie{
     margin:56px calc(50% - 50vw) 0;background:var(--panel);
@@ -619,6 +653,29 @@
 </style>
 
 <div class="wrap">
+  <div class="portal" id="portal" hidden>
+    <div class="portal-bg"></div>
+    <div class="portal-in">
+      <img class="portal-logo" src="assets/logo-full.png" alt="StreamVe">
+      <h2 class="display">¿Cómo vas<br>a comprar?</h2>
+      <p>Elegí una. Podés cambiar cuando quieras desde la barra de arriba.</p>
+      <div class="portal-ops">
+        <button data-portal="personal">
+          <u>PARA MÍ</u>
+          <b>Una o dos pantallas</b>
+          <span>Comprás de a una. Sin registro: pagás y te entregamos en minutos.</span>
+          <i>ENTRAR →</i>
+        </button>
+        <button data-portal="mayorista">
+          <u>SOY REVENDEDOR</u>
+          <b>Desde 10 unidades</b>
+          <span>Precio por unidad más bajo, para revender. Necesita cuenta aprobada.</span>
+          <i>ENTRAR →</i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <header class="bar" id="bar">
     <div class="bar-in">
       <button class="brand" id="brand" aria-label="StreamVe — ir al inicio">
@@ -1137,10 +1194,11 @@ function ajustarFlechas(){
 window.addEventListener('resize', ajustarFlechas);
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-ir],[data-abrir],[data-filtro],[data-plan],[data-meses],[data-metodo],[data-cerrar],[data-confirmar],[data-entrar],[data-mas],[data-menos],[data-repetir],[data-enviar],[data-scroll],[data-sonido]');
+  const t = e.target.closest('[data-ir],[data-abrir],[data-filtro],[data-plan],[data-meses],[data-metodo],[data-cerrar],[data-confirmar],[data-entrar],[data-mas],[data-menos],[data-repetir],[data-enviar],[data-scroll],[data-sonido],[data-portal]');
   if (!t) return;
   const d = t.dataset;
 
+  if (d.portal) return elegirModo(d.portal);
   if (d.sonido) return alternarSonido();
   if (d.scroll !== undefined){
     const el = document.getElementById('rail-' + d.scroll);
@@ -1176,6 +1234,24 @@ document.addEventListener('input', e => {
   if (e.target.id === 'fWa')   S.wa   = e.target.value;
   if (e.target.id === 'fUser') S.user = e.target.value;
 });
+
+/* ── portal de entrada ──
+   Se pregunta una sola vez y la elección queda guardada. No es un muro:
+   comprar como individual nunca pide registro; el mayorista sí, porque
+   ahí hay precio distinto y mínimo por paquete. */
+const CLAVE_MODO = 'streamve.modo';
+
+function leerModo(){
+  try { return localStorage.getItem(CLAVE_MODO); } catch (e) { return null; }
+}
+function elegirModo(modo){
+  try { localStorage.setItem(CLAVE_MODO, modo); } catch (e) {}
+  $('#portal').hidden = true;
+  ir(modo === 'mayorista' ? 'mayorista' : 'home');
+}
+function abrirPortalSiHaceFalta(){
+  if (!leerModo()) $('#portal').hidden = false;
+}
 
 /* ── cabecera y pie ── */
 const waLink = t => 'https://wa.me/' + CFG.whatsapp + '?text=' + encodeURIComponent(t);
@@ -1222,4 +1298,5 @@ $('#tabMayor').onclick     = () => ir('mayorista');
 montarChrome();
 barraSolida();
 render();
+abrirPortalSiHaceFalta();
 </script>
