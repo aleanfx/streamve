@@ -1282,7 +1282,8 @@ function pintarAtencion(){
   if (!el) return;
   const h = new Date().getHours();
   const abierto = h >= CFG.abreHora && h < CFG.cierraHora;
-  el.textContent = abierto ? 'HASTA ' + String(CFG.cierraHora).padStart(2,'0') + ':00' : 'ABRE ' + String(CFG.abreHora).padStart(2,'0') + ':00';
+  const hh = n => String(n % 24).padStart(2,'0') + ':00';   // 24 se lee 00:00
+  el.textContent = abierto ? 'HASTA ' + hh(CFG.cierraHora) : 'ABRE ' + hh(CFG.abreHora);
   el.classList.toggle('cerrado', !abierto);
 }
 setInterval(pintarAtencion, 60000);
