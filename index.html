@@ -58,7 +58,12 @@
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   ::selection{background:var(--accent);color:var(--ink)}
 
-  .wrap{max-width:1440px;margin:0 auto;min-height:100vh;background:var(--app);padding-top:var(--barh)}
+    /* El fondo va de un gris cálido arriba a casi negro abajo: al bajar,
+     la página se oscurece sola. Es lo que hace que se sienta profunda. */
+  .wrap{
+    max-width:1440px;margin:0 auto;min-height:100vh;padding-top:var(--barh);
+    background:linear-gradient(180deg,#302c2a 0%,#282422 14%,#211e1c 38%,#1a1817 68%,#141212 100%);
+  }
 
   /* ── header ── */
   /* Fija y transparente sobre el tráiler; se vuelve sólida al bajar.
@@ -89,23 +94,27 @@
   }
   .bar-in{position:relative;z-index:1}
 
-  /* Indicador de stock: el argumento del negocio, arriba y en vivo */
-  .live{
-    display:none;align-items:center;gap:7px;
-    font-size:11.5px;letter-spacing:.06em;color:var(--mute-2);
-    padding:6px 11px 6px 9px;border:1px solid var(--line);border-radius:999px;
-    background:rgba(255,255,255,.03);white-space:nowrap;
+  /* Lectura de instrumento, no un pill con lucecita: etiquetas micro en
+     versales sobre el dato, separadas por filetes. Cuadrado, como el
+     resto del sistema, y con el horario calculado de verdad. */
+  .estado{
+    display:none;align-items:stretch;
+    border-left:2px solid var(--accent);margin-left:4px;
   }
-  .live b{font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
-  .live i{
-    width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none;
-    box-shadow:0 0 0 0 rgba(95,191,122,.65);animation:latir 2.4s ease-out infinite;
+  .estado span{
+    display:flex;flex-direction:column;gap:3px;justify-content:center;
+    padding:2px 14px;border-right:1px solid var(--line);
   }
-  @keyframes latir{
-    0%{box-shadow:0 0 0 0 rgba(95,191,122,.6)}
-    70%{box-shadow:0 0 0 7px rgba(95,191,122,0)}
-    100%{box-shadow:0 0 0 0 rgba(95,191,122,0)}
+  .estado span:last-child{border-right:0;padding-right:0}
+  .estado u{
+    font-size:8.5px;letter-spacing:.2em;font-weight:800;
+    color:var(--dim);text-decoration:none;line-height:1;
   }
+  .estado b{
+    font-size:13px;font-weight:800;letter-spacing:.02em;line-height:1;
+    color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .estado b.cerrado{color:var(--mute)}
   .bar-wa{
     display:none;width:38px;height:38px;border-radius:50%;flex:none;
     border:1px solid var(--line-2);color:var(--mute-2);
@@ -115,7 +124,7 @@
   .bar-wa:hover{color:var(--ink);border-color:var(--ink);background:rgba(255,255,255,.06)}
   @media (min-width:900px){
     :root{--barh:72px}
-    .live{display:inline-flex;margin-left:6px}
+    .estado{display:flex}
     .bar-wa{display:grid}
     .seg{margin-left:auto}
   }
@@ -225,14 +234,14 @@
   .hero-cta{display:flex;flex-wrap:wrap;gap:2px}
 
   /* ── rails & grid ── */
-  .rail-head{display:flex;align-items:baseline;gap:8px;padding:18px var(--pad) 10px}
+  .rail-head{display:flex;align-items:baseline;gap:8px;padding:40px var(--pad) 14px}
   .rail-head b{font-weight:800;font-size:13px;letter-spacing:.12em}
   .rail-head span{font-size:11px;color:var(--mute)}
   /* El padding vertical deja aire para que la tarjeta pueda levantarse en
      hover: el rail tiene overflow-x, que también recorta arriba y abajo. */
   .rail{
     display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;
-    padding:10px var(--pad) 14px;scrollbar-width:none;scroll-behavior:smooth;
+    padding:10px var(--pad) 26px;scrollbar-width:none;scroll-behavior:smooth;
   }
   .rail::-webkit-scrollbar{display:none}
   .rail .tile{flex:0 0 auto;width:188px}
@@ -317,16 +326,29 @@
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
   .rise{animation:rise .42s cubic-bezier(.2,.7,.3,1) both}
 
-  /* banda de promesa */
-  .promesa{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
-    border-bottom:1px solid var(--line);
+  /* Cinta de noticiero: corre sin fin y se detiene al pasar el mouse.
+     La pista lleva los ítems duplicados, por eso el bucle no salta. */
+  .ticker{
+    overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    background:rgba(0,0,0,.24);
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 5%,#000 95%,transparent);
+    mask-image:linear-gradient(to right,transparent,#000 5%,#000 95%,transparent);
   }
-  .promesa > div{padding:16px var(--pad);border-right:1px solid var(--line)}
-  .promesa > div:last-child{border-right:0}
-  .promesa u{font-weight:800;font-size:9px;letter-spacing:.16em;color:var(--accent-400);text-decoration:none}
-  .promesa b{display:block;font-weight:800;font-size:17px;margin-top:6px;letter-spacing:-.01em}
-  .promesa span{font-size:12px;color:var(--mute)}
+  .ticker-pista{display:flex;width:max-content;animation:correr 46s linear infinite}
+  .ticker:hover .ticker-pista{animation-play-state:paused}
+  @keyframes correr{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .tk{
+    display:flex;align-items:baseline;gap:10px;
+    padding:13px 0;margin-right:46px;white-space:nowrap;
+  }
+  .tk::before{
+    content:"";width:5px;height:5px;background:var(--accent);
+    align-self:center;margin-right:14px;flex:none;
+  }
+  .tk u{font-weight:800;font-size:9px;letter-spacing:.18em;color:var(--dim);text-decoration:none}
+  .tk b{font-weight:800;font-size:15px;letter-spacing:-.01em;color:var(--ink)}
+  .tk em{font-style:normal;font-size:12.5px;color:var(--mute)}
+  @media (prefers-reduced-motion:reduce){.ticker-pista{animation:none}}
   .art-badge{
     position:absolute;top:10px;right:10px;
     font-weight:800;font-size:10px;letter-spacing:.06em;padding:3px 6px;
@@ -342,6 +364,20 @@
   .tile-price b small{font-size:11px;font-weight:400;color:var(--mute)}
   .tile-price em{font-style:normal;font-weight:800;font-size:11px;color:var(--accent-400)}
   .tile-micro{font-size:10px;color:var(--mute);margin-top:4px}
+  /* La descripción vive plegada y se abre en hover, sin mover el resto
+     de la fila: la tarjeta crece hacia abajo sobre su propio espacio. */
+  .tile-desc{
+    display:grid;grid-template-rows:0fr;
+    transition:grid-template-rows .32s cubic-bezier(.2,.7,.3,1);
+  }
+  .tile-desc > p{
+    overflow:hidden;margin:0;font-size:12px;line-height:1.4;
+    color:var(--mute-2);
+  }
+  .tile:hover .tile-desc,.tile:focus-visible .tile-desc{grid-template-rows:1fr}
+  .tile:hover .tile-desc > p{padding-top:9px}
+  .tile-desc > p{transition:padding-top .32s cubic-bezier(.2,.7,.3,1)}
+  @media (hover:none){.tile-desc{display:none}}
 
   /* ── steps strip ── */
   .steps{
@@ -588,7 +624,10 @@
       <button class="brand" id="brand" aria-label="StreamVe — ir al inicio">
         <img class="brand-lockup" src="assets/logo-full.png" alt="StreamVe">
       </button>
-      <span class="live" id="live"><i></i><b>—</b> disponibles</span>
+      <div class="estado" id="estado">
+        <span><u>ATENCIÓN</u><b id="estAtencion">—</b></span>
+        <span><u>EN STOCK</u><b id="estStock">—</b></span>
+      </div>
       <div class="seg">
         <button id="tabPersonal" aria-pressed="true">PERSONAL</button>
         <button id="tabMayor" class="on-red" aria-pressed="false">MAYORISTA</button>
@@ -656,6 +695,8 @@ const CFG = {
   tasaBs:          36.5,
   descuentoAnual:  0.15,     // 12 meses = −15%
   minMayorista:    10,
+  abreHora:        9,       // horario de atención, en 24 h
+  cierraHora:      24,
   whatsapp:        '584140000000',
   binanceCorreo:   'pagos@streamve.com',
   binanceRed:      'USDT · BEP20',
@@ -691,6 +732,17 @@ const CAT = [
     color:'#0064FF', logo:'assets/logos/paramount.svg',  img:'assets/pp.webp', card:'assets/cards/pp.webp',
     planes:[{k:'pantalla',etq:'Pantalla',precio:2.10,stock:4}] }
 ];
+
+/* Qué es cada servicio, en una línea. Se despliega al pasar el mouse. */
+const DESC = {
+  nx:'Series y películas originales. El plan Premium da 4K y cuatro pantallas.',
+  dp:'Disney, Pixar, Marvel, Star Wars y ESPN en un mismo lugar.',
+  mx:'HBO, DC y Warner. Los estrenos de cine llegan acá primero.',
+  pv:'Cine, series y todos los originales de Amazon.',
+  sp:'Música sin anuncios, sin conexión y sin saltos limitados.',
+  cr:'Anime en simulcast, subtitulado y doblado al español.',
+  pp:'Paramount, MTV, Nickelodeon y CBS, con fútbol incluido.'
+};
 
 const HIST = [
   { codigo:'SV-4106', detalle:'12 u · Netflix, Disney+', estado:'ENTREGADO', monto:'$29,60' },
@@ -772,6 +824,7 @@ function tileHTML(x, i){
       <div class="tile-name">${esc(x.nombre)}</div>
       <div class="tile-price"><b>${desde}<small> /mes</small></b><em>VER →</em></div>
       <div class="tile-micro">${esc(micro)}</div>
+      <div class="tile-desc"><p>${esc(DESC[x.id] || '')}</p></div>
     </div>
   </button>`;
 }
@@ -806,11 +859,18 @@ function vistaHome(){
       </div>
     </div>
   </section>
-  <div class="promesa">
-    <div><u>GARANTÍA</u><b>${CFG.garantiaDias} días</b><span>Si se cae, la reponemos</span></div>
-    <div><u>REPOSICIÓN</u><b>Menos de 1 h</b><span>No esperás al día siguiente</span></div>
-    <div><u>RENOVACIÓN</u><b>Misma clave</b><span>No reconfigurás el televisor</span></div>
-    <div><u>ATENCIÓN</u><b>Hasta medianoche</b><span>Que es cuando falla</span></div>
+  <div class="ticker" aria-label="Nuestras condiciones">
+    <div class="ticker-pista">${(() => {
+      const its = [
+        ['GARANTÍA', CFG.garantiaDias + ' días', 'Si se cae, la reponemos'],
+        ['REPOSICIÓN', 'Menos de 1 h', 'No esperás al día siguiente'],
+        ['RENOVACIÓN', 'Misma clave', 'No reconfigurás el televisor'],
+        ['ENTREGA', CFG.ventanaEntrega, 'A mano, no un robot'],
+        ['ATENCIÓN', 'Hasta medianoche', 'Que es cuando falla'],
+        ['PAGOS', 'Binance y Pago Móvil', 'En dólares o en bolívares']
+      ].map(([u, b, e]) => `<span class="tk"><u>${esc(u)}</u><b>${esc(b)}</b><em>${esc(e)}</em></span>`).join('');
+      return its + its;   /* duplicado: el bucle no tiene salto */
+    })()}</div>
   </div>
   ${rails.map((r, ri) => `
     <div class="rail-head"><b>${r.t}</b><span>${r.n}</span></div>
@@ -1015,10 +1075,7 @@ function arrancarVideo(){
   const p = v.play();
   if (p && p.catch) p.catch(() => {});   // si lo bloquea, queda el póster
 
-  if (b){
-    b.innerHTML = sonidoOn ? ICONO_AUDIO : ICONO_MUDO;
-    b.setAttribute('aria-label', sonidoOn ? 'Silenciar' : 'Activar sonido');
-  }
+  pintarBotonSonido();
 
   /* Sólo suena mientras se está viendo: al salir de pantalla se pausa,
      y así no queda audio de fondo sonando mientras navegás el catálogo. */
@@ -1045,20 +1102,30 @@ function primerGesto(){
   const visible = r.top < window.innerHeight * 0.65 && r.bottom > window.innerHeight * 0.35;
   if (visible) alternarSonido();
 }
-['pointerdown','keydown','wheel','touchstart'].forEach(ev =>
+['pointerdown','keydown','touchstart'].forEach(ev =>
   window.addEventListener(ev, primerGesto, { once:false, passive:true }));
+
+function pintarBotonSonido(){
+  const b = document.querySelector('.hero-sound');
+  if (!b) return;
+  b.innerHTML = sonidoOn ? ICONO_AUDIO : ICONO_MUDO;
+  b.setAttribute('aria-label', sonidoOn ? 'Silenciar' : 'Activar sonido');
+}
 
 function alternarSonido(){
   const v = document.querySelector('.hero-video');
   if (!v) return;
   sonidoOn = !sonidoOn;
   v.muted = !sonidoOn;
-  if (sonidoOn){ const q = v.play(); if (q && q.catch) q.catch(() => {}); }
-  const b = document.querySelector('.hero-sound');
-  if (b){
-    b.innerHTML = sonidoOn ? ICONO_AUDIO : ICONO_MUDO;
-    b.setAttribute('aria-label', sonidoOn ? 'Silenciar' : 'Activar sonido');
-  }
+  const q = v.play();
+  /* Si el navegador rechaza el audio, volvemos a mudo y seguimos
+     reproduciendo: nunca hay que dejar el video detenido. */
+  if (q && q.catch) q.catch(() => {
+    sonidoOn = false; v.muted = true;
+    const r = v.play(); if (r && r.catch) r.catch(() => {});
+    pintarBotonSonido();
+  });
+  pintarBotonSonido();
 }
 
 /* Las flechas solo aparecen si el rail realmente tiene contenido oculto */
@@ -1115,8 +1182,9 @@ const waLink = t => 'https://wa.me/' + CFG.whatsapp + '?text=' + encodeURICompon
 
 function montarChrome(){
   const total = CAT.reduce((a, x) => a + stockDe(x), 0);
-  const live = $('#live');
-  if (live) live.querySelector('b').textContent = total;
+  const st = $('#estStock');
+  if (st) st.textContent = total + ' u.';
+  pintarAtencion();
 
   $('#barWa').href = waLink('Hola, quiero preguntar por una cuenta.');
   $('#pieWa').href = waLink('Hola, tengo un problema con mi cuenta.');
@@ -1127,6 +1195,18 @@ function montarChrome(){
     `<li><button data-abrir="${x.id}"><b>${esc(x.nombre)}</b><i>desde ${usd(Math.min.apply(null, x.planes.map(pl => pl.precio)))}</i></button></li>`
   ).join('');
 }
+
+/* Abierto o cerrado se calcula contra el horario real, no es un adorno:
+   si son las 2 de la mañana, la web lo dice en vez de fingir. */
+function pintarAtencion(){
+  const el = $('#estAtencion');
+  if (!el) return;
+  const h = new Date().getHours();
+  const abierto = h >= CFG.abreHora && h < CFG.cierraHora;
+  el.textContent = abierto ? 'HASTA ' + String(CFG.cierraHora).padStart(2,'0') + ':00' : 'ABRE ' + String(CFG.abreHora).padStart(2,'0') + ':00';
+  el.classList.toggle('cerrado', !abierto);
+}
+setInterval(pintarAtencion, 60000);
 
 /* La barra se vuelve sólida apenas se sale de la portada */
 function barraSolida(){
