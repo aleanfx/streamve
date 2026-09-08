@@ -72,14 +72,22 @@
     max-width:1440px;margin:0 auto;height:100%;
     display:flex;align-items:center;gap:14px;padding:0 var(--pad);
   }
-  body.en-home .bar{
-    background:linear-gradient(to bottom,rgba(20,18,17,.82),rgba(20,18,17,0));
-    border-bottom-color:transparent;
+  /* El degradado se desborda por debajo de la barra y se desvanece dentro
+     del hero. Si termina en el borde, se ve una línea dura de corte. */
+  body.en-home .bar{background:transparent;border-bottom-color:transparent}
+  body.en-home .bar::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:220%;
+    pointer-events:none;transition:opacity .3s ease;
+    background:linear-gradient(to bottom,
+      rgba(16,14,13,.88) 0%,rgba(16,14,13,.62) 32%,
+      rgba(16,14,13,.28) 62%,rgba(16,14,13,0) 100%);
   }
+  body.en-home .bar.solido::before{opacity:0}
   body.en-home .bar.solido{
     background:rgba(26,24,23,.86);backdrop-filter:blur(14px) saturate(1.3);
     border-bottom-color:var(--line);
   }
+  .bar-in{position:relative;z-index:1}
 
   /* Indicador de stock: el argumento del negocio, arriba y en vivo */
   .live{
@@ -1023,6 +1031,22 @@ function arrancarVideo(){
   }, { threshold: 0.35 });
   obsHero.observe(v);
 }
+
+/* El navegador exige un gesto del usuario antes de permitir audio. En
+   cuanto ocurre el primero — un clic, una tecla, un scroll — encendemos
+   el sonido si el hero sigue en pantalla. Antes de eso es imposible. */
+let gestoHecho = false;
+function primerGesto(){
+  if (gestoHecho) return;
+  gestoHecho = true;
+  const v = document.querySelector('.hero-video');
+  if (!v || sonidoOn) return;
+  const r = v.getBoundingClientRect();
+  const visible = r.top < window.innerHeight * 0.65 && r.bottom > window.innerHeight * 0.35;
+  if (visible) alternarSonido();
+}
+['pointerdown','keydown','wheel','touchstart'].forEach(ev =>
+  window.addEventListener(ev, primerGesto, { once:false, passive:true }));
 
 function alternarSonido(){
   const v = document.querySelector('.hero-video');
