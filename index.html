@@ -30,6 +30,10 @@
 
     --f:"Archivo",system-ui,-apple-system,sans-serif;
     --pad:14px;
+    /* Netflix no usa esquinas vivas: redondea apenas. Es la única
+       desviación deliberada del sistema Modernist, que pide radio 0. */
+    --r:4px;
+    --r-card:6px;
   }
 
   *{box-sizing:border-box}
@@ -48,7 +52,7 @@
   }
 
   button,input{font:inherit;font-family:var(--f)}
-  button{cursor:pointer;border-radius:0}
+  button{cursor:pointer;border-radius:var(--r)}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   ::selection{background:var(--accent);color:var(--ink)}
 
@@ -67,7 +71,7 @@
   }
   .brand-lockup{height:34px;width:auto;display:block}
   @media (min-width:900px){.brand-lockup{height:44px}}
-  .seg{display:flex;border:1px solid var(--line-2)}
+  .seg{display:flex;border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden}
   .seg button{
     font-weight:800;font-size:11px;letter-spacing:.06em;
     padding:7px 12px;border:0;background:transparent;color:var(--mute-2);
@@ -82,11 +86,12 @@
   .chip{
     display:inline-block;font-weight:800;font-size:11px;letter-spacing:.04em;
     padding:5px 9px;border:1px solid var(--line-2);color:var(--mute-2);
+    border-radius:var(--r);
   }
   .btn{
     font-weight:800;letter-spacing:.04em;font-size:14px;
     padding:14px 18px;border:1px solid transparent;text-align:left;
-    background:transparent;color:var(--ink);
+    background:transparent;color:var(--ink);border-radius:var(--r);
   }
   .btn-primary{background:var(--accent);color:var(--ink);border-color:var(--accent)}
   .btn-primary:hover{background:var(--accent-600);border-color:var(--accent-600)}
@@ -112,7 +117,9 @@
   }
   .hero-video{
     position:absolute;inset:0;width:100%;height:100%;
-    object-fit:cover;
+    /* Bajamos el encuadre: lo que se recorta es el techo oscuro y no
+       la fila de tarjetas, que es lo que interesa ver. */
+    object-fit:cover;object-position:center 72%;
   }
   .hero-art{
     position:absolute;inset:0;
@@ -148,8 +155,18 @@
   .hero h1{margin:0;font-size:clamp(44px,11vw,96px);line-height:.9;letter-spacing:-.035em;font-weight:800}
   .stock-flag{
     display:inline-block;font-weight:800;font-size:11px;letter-spacing:.18em;
-    padding:5px 9px;background:var(--app);color:var(--accent-400);margin-top:12px;
+    padding:5px 9px;background:var(--app);color:var(--accent-400);margin-top:12px;border-radius:var(--r);
   }
+  .hero-sound{
+    position:absolute;right:22px;bottom:26px;z-index:5;
+    width:48px;height:48px;border-radius:50%;
+    border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.42);
+    color:#fff;display:grid;place-items:center;backdrop-filter:blur(3px);
+    transition:background .18s ease,border-color .18s ease;
+  }
+  .hero-sound:hover{background:rgba(0,0,0,.7);border-color:#fff}
+  .hero-sound svg{width:21px;height:21px;fill:currentColor;display:block}
+  @media (max-width:899px){.hero-sound{right:14px;bottom:16px;width:42px;height:42px}}
   .hero-chips{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 18px}
   .hero-cta{display:flex;flex-wrap:wrap;gap:2px}
 
@@ -185,6 +202,7 @@
 
   .tile{
     background:var(--panel);outline:1px solid var(--line);
+    border-radius:var(--r-card);overflow:hidden;
     transition:transform .28s ease,outline-color .2s ease;
     text-align:left;padding:0;border:0;color:var(--ink);width:100%;display:block;
   }
@@ -258,6 +276,7 @@
   .art-badge{
     position:absolute;top:10px;right:10px;
     font-weight:800;font-size:10px;letter-spacing:.06em;padding:3px 6px;
+    border-radius:3px;
   }
   .tile-foot{padding:11px 12px 12px;border-top:1px solid var(--line)}
   .tile:hover .tile-foot{background:var(--tile)}
@@ -369,7 +388,7 @@
   }
   .fields input{
     font-size:14px;min-height:48px;padding:10px 12px;
-    background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:0;
+    background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:var(--r);
   }
   .fields input::placeholder{color:var(--dim)}
 
@@ -407,11 +426,32 @@
   }
   .hrow b{font-weight:800}
   .hrow .st{font-size:10px;letter-spacing:.06em;padding:3px 7px;border:1px solid var(--line-2);color:var(--mute-2)}
-  .login{padding:26px var(--pad) 28px;background:var(--panel)}
+  /* Fondo de collage con velo encima, como la pantalla de registro de
+     Netflix: la imagen ambienta y el velo mantiene legible el formulario. */
+  .login{
+    position:relative;overflow:hidden;background:var(--black);
+    padding:clamp(40px,9vw,90px) 0 clamp(46px,9vw,96px);
+    min-height:calc(100vh - 62px);display:flex;align-items:center;
+    margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
+  }
+  .login-bg{
+    position:absolute;inset:0;opacity:.42;
+    background:url('assets/fondo.webp') center/cover no-repeat;
+  }
+  .login-veil{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(120% 90% at 30% 50%,rgba(20,18,17,.92) 0%,rgba(20,18,17,.72) 42%,rgba(20,18,17,.55) 100%),
+      linear-gradient(to top,#201e1d 0%,rgba(32,30,29,.25) 26%,rgba(32,30,29,.25) 74%,#201e1d 100%);
+  }
+  .login-inner{
+    position:relative;width:100%;max-width:1440px;
+    margin:0 auto;padding:0 var(--pad);
+  }
   .login .form{display:flex;flex-direction:column;gap:10px;max-width:340px;margin-top:18px}
   .login input{
     font-size:14px;min-height:48px;padding:10px 12px;
-    background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:0;
+    background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:var(--r);
   }
 
   .foot{padding:14px;border-top:1px solid var(--line);font-size:11px;color:var(--mute)}
@@ -603,6 +643,7 @@ function vistaHome(){
     <video class="hero-video" src="assets/hero.mp4" poster="assets/hero.webp"
            autoplay muted loop playsinline preload="auto"></video>
     <div class="hero-grid"></div><div class="hero-veil"></div>
+    <button class="hero-sound" data-sonido="1" aria-label="Activar sonido"></button>
     <div class="hero-inner">
       <h1 class="display rise">NO SE<br>CAE.</h1>
       <div><span class="stock-flag">EN STOCK AHORA · ${total} UNIDADES</span></div>
@@ -737,6 +778,9 @@ function vistaPedido(){
 function vistaLogin(){
   return `
   <div class="login">
+    <div class="login-bg"></div>
+    <div class="login-veil"></div>
+    <div class="login-inner">
     <div class="kicker">MAYORISTA · DESDE ${CFG.minMayorista} U.</div>
     <div class="display" style="font-size:clamp(30px,7vw,52px);margin:10px 0 0">Precio<br>unitario.</div>
     <div class="form">
@@ -744,6 +788,7 @@ function vistaLogin(){
       <input type="password" value="demo1234" placeholder="Contraseña">
       <button class="btn btn-primary" data-entrar="1" style="padding:15px 18px;font-size:15px">ENTRAR</button>
       <div class="mute" style="font-size:11px">Cuentas por aprobación · WhatsApp</div>
+    </div>
     </div>
   </div>`;
 }
@@ -803,14 +848,52 @@ function render(){
   arrancarVideo();
 }
 
-/* Un <video> insertado con innerHTML no siempre empieza a cargar solo:
-   hay que pedirle load() y disparar play() a mano. */
+/* El navegador sólo deja arrancar un video solo si está en silencio.
+   Así que empieza mudo y el botón lo enciende: es la única forma. */
+let sonidoOn = false;
+let obsHero  = null;
+
+const ICONO_MUDO  = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4L15.2 10.6 12.5 7.9l-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4-2.7-2.7z"/></svg>';
+const ICONO_AUDIO = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4zM14 3.2v2.1c2.9.9 5 3.5 5 6.7s-2.1 5.8-5 6.7v2.1c4-.9 7-4.5 7-8.8s-3-7.9-7-8.8z"/></svg>';
+
 function arrancarVideo(){
   const v = document.querySelector('.hero-video');
-  if (!v) return;
+  const b = document.querySelector('.hero-sound');
+  if (!v) { if (obsHero) { obsHero.disconnect(); obsHero = null; } return; }
+
+  v.muted = !sonidoOn;
   v.load();
   const p = v.play();
-  if (p && p.catch) p.catch(() => {});   // si el navegador bloquea, queda el póster
+  if (p && p.catch) p.catch(() => {});   // si lo bloquea, queda el póster
+
+  if (b){
+    b.innerHTML = sonidoOn ? ICONO_AUDIO : ICONO_MUDO;
+    b.setAttribute('aria-label', sonidoOn ? 'Silenciar' : 'Activar sonido');
+  }
+
+  /* Sólo suena mientras se está viendo: al salir de pantalla se pausa,
+     y así no queda audio de fondo sonando mientras navegás el catálogo. */
+  if (obsHero) obsHero.disconnect();
+  obsHero = new IntersectionObserver(entradas => {
+    entradas.forEach(en => {
+      if (en.isIntersecting){ const q = v.play(); if (q && q.catch) q.catch(() => {}); }
+      else v.pause();
+    });
+  }, { threshold: 0.35 });
+  obsHero.observe(v);
+}
+
+function alternarSonido(){
+  const v = document.querySelector('.hero-video');
+  if (!v) return;
+  sonidoOn = !sonidoOn;
+  v.muted = !sonidoOn;
+  if (sonidoOn){ const q = v.play(); if (q && q.catch) q.catch(() => {}); }
+  const b = document.querySelector('.hero-sound');
+  if (b){
+    b.innerHTML = sonidoOn ? ICONO_AUDIO : ICONO_MUDO;
+    b.setAttribute('aria-label', sonidoOn ? 'Silenciar' : 'Activar sonido');
+  }
 }
 
 /* Las flechas solo aparecen si el rail realmente tiene contenido oculto */
@@ -822,10 +905,11 @@ function ajustarFlechas(){
 window.addEventListener('resize', ajustarFlechas);
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-ir],[data-abrir],[data-filtro],[data-plan],[data-meses],[data-metodo],[data-cerrar],[data-confirmar],[data-entrar],[data-mas],[data-menos],[data-repetir],[data-enviar],[data-scroll]');
+  const t = e.target.closest('[data-ir],[data-abrir],[data-filtro],[data-plan],[data-meses],[data-metodo],[data-cerrar],[data-confirmar],[data-entrar],[data-mas],[data-menos],[data-repetir],[data-enviar],[data-scroll],[data-sonido]');
   if (!t) return;
   const d = t.dataset;
 
+  if (d.sonido) return alternarSonido();
   if (d.scroll !== undefined){
     const el = document.getElementById('rail-' + d.scroll);
     if (el) el.scrollBy({ left: (+d.dir) * el.clientWidth * 0.85, behavior:'smooth' });
