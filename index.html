@@ -34,6 +34,8 @@
        desviación deliberada del sistema Modernist, que pide radio 0. */
     --r:4px;
     --r-card:6px;
+    --barh:60px;
+    --ok:#5fbf7a;
   }
 
   *{box-sizing:border-box}
@@ -56,20 +58,64 @@
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   ::selection{background:var(--accent);color:var(--ink)}
 
-  .wrap{max-width:1440px;margin:0 auto;min-height:100vh;background:var(--app)}
+  .wrap{max-width:1440px;margin:0 auto;min-height:100vh;background:var(--app);padding-top:var(--barh)}
 
   /* ── header ── */
+  /* Fija y transparente sobre el tráiler; se vuelve sólida al bajar.
+     Es lo que hace que la portada se sienta a pantalla completa. */
   .bar{
-    display:flex;align-items:center;gap:12px;
-    padding:12px var(--pad);
-    border-bottom:1px solid var(--line);
-    position:sticky;top:0;z-index:20;background:var(--app);
+    position:fixed;top:0;left:0;right:0;z-index:30;height:var(--barh);
+    background:var(--app);border-bottom:1px solid var(--line);
+    transition:background .3s ease,border-color .3s ease,backdrop-filter .3s ease;
+  }
+  .bar-in{
+    max-width:1440px;margin:0 auto;height:100%;
+    display:flex;align-items:center;gap:14px;padding:0 var(--pad);
+  }
+  body.en-home .bar{
+    background:linear-gradient(to bottom,rgba(20,18,17,.82),rgba(20,18,17,0));
+    border-bottom-color:transparent;
+  }
+  body.en-home .bar.solido{
+    background:rgba(26,24,23,.86);backdrop-filter:blur(14px) saturate(1.3);
+    border-bottom-color:var(--line);
+  }
+
+  /* Indicador de stock: el argumento del negocio, arriba y en vivo */
+  .live{
+    display:none;align-items:center;gap:7px;
+    font-size:11.5px;letter-spacing:.06em;color:var(--mute-2);
+    padding:6px 11px 6px 9px;border:1px solid var(--line);border-radius:999px;
+    background:rgba(255,255,255,.03);white-space:nowrap;
+  }
+  .live b{font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+  .live i{
+    width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none;
+    box-shadow:0 0 0 0 rgba(95,191,122,.65);animation:latir 2.4s ease-out infinite;
+  }
+  @keyframes latir{
+    0%{box-shadow:0 0 0 0 rgba(95,191,122,.6)}
+    70%{box-shadow:0 0 0 7px rgba(95,191,122,0)}
+    100%{box-shadow:0 0 0 0 rgba(95,191,122,0)}
+  }
+  .bar-wa{
+    display:none;width:38px;height:38px;border-radius:50%;flex:none;
+    border:1px solid var(--line-2);color:var(--mute-2);
+    place-items:center;transition:color .18s ease,border-color .18s ease,background .18s ease;
+  }
+  .bar-wa svg{width:19px;height:19px;fill:currentColor;display:block}
+  .bar-wa:hover{color:var(--ink);border-color:var(--ink);background:rgba(255,255,255,.06)}
+  @media (min-width:900px){
+    :root{--barh:72px}
+    .live{display:inline-flex;margin-left:6px}
+    .bar-wa{display:grid}
+    .seg{margin-left:auto}
   }
   .brand{
-    display:flex;align-items:center;
-    margin-right:auto;background:none;border:0;padding:0;
+    display:flex;align-items:center;background:none;border:0;padding:0;
   }
-  .brand-lockup{height:34px;width:auto;display:block}
+  .brand-lockup{height:32px;width:auto;display:block}
+  .seg{margin-left:auto}
   @media (min-width:900px){.brand-lockup{height:44px}}
   .seg{display:flex;border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden}
   .seg button{
@@ -108,8 +154,8 @@
     position:relative;overflow:hidden;background:var(--black);
     border-bottom:2px solid var(--accent);
     display:flex;flex-direction:column;justify-content:flex-end;
-    padding:26px 0 22px;min-height:clamp(380px,46vw,520px);
-    margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
+    padding:calc(var(--barh) + 26px) 0 22px;min-height:clamp(440px,58vw,560px);
+    margin:calc(-1 * var(--barh)) calc(50% - 50vw) 0;
   }
   .hero-inner{
     position:relative;width:100%;max-width:1440px;
@@ -431,7 +477,7 @@
   .login{
     position:relative;overflow:hidden;background:var(--black);
     padding:clamp(40px,9vw,90px) 0 clamp(46px,9vw,96px);
-    min-height:calc(100vh - 62px);display:flex;align-items:center;
+    min-height:calc(100vh - var(--barh));display:flex;align-items:center;
     margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
   }
   .login-bg{
@@ -454,7 +500,54 @@
     background:transparent;border:1px solid var(--line-2);color:var(--ink);border-radius:var(--r);
   }
 
-  .foot{padding:14px;border-top:1px solid var(--line);font-size:11px;color:var(--mute)}
+  /* ── pie ── cierre de venta arriba, utilidad abajo ── */
+  .pie{
+    margin:56px calc(50% - 50vw) 0;background:var(--panel);
+    border-top:2px solid var(--accent);
+  }
+  .pie-in{max-width:1440px;margin:0 auto;padding:0 var(--pad)}
+
+  .pie-cta{
+    display:flex;flex-wrap:wrap;gap:26px;align-items:flex-end;justify-content:space-between;
+    padding:clamp(34px,5vw,58px) 0 clamp(30px,4vw,44px);
+    border-bottom:1px solid var(--line);
+  }
+  .pie-cta h2{margin:10px 0 0;font-size:clamp(30px,5.4vw,58px)}
+  .pie-cta p{margin:14px 0 0;max-width:42ch;color:var(--mute-2);font-size:15px}
+  .pie-wa{
+    text-decoration:none;flex:none;padding:16px 22px;font-size:15px;
+    display:inline-block;align-self:center;
+  }
+
+  .pie-cols{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:30px 40px;padding:clamp(28px,4vw,42px) 0;
+    border-bottom:1px solid var(--line);
+  }
+  .pie-cols h3{
+    margin:0 0 14px;font-size:10px;letter-spacing:.2em;font-weight:800;color:var(--accent-400);
+  }
+  .pie-cols h3.sep{margin-top:26px}
+  .pie-cols ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .pie-cols li{font-size:14px;color:var(--mute-2);line-height:1.35}
+  .pie-cols li span{
+    font-family:var(--f);font-weight:800;font-size:11px;color:var(--dim);margin-right:7px;
+  }
+  .pie-cols button{
+    background:none;border:0;padding:0;color:var(--mute-2);font-size:14px;
+    text-align:left;transition:color .15s ease;
+  }
+  .pie-cols button:hover{color:var(--ink)}
+  .pie-cols button b{font-weight:400}
+  .pie-cols button i{font-style:normal;color:var(--dim);font-size:12px;margin-left:6px}
+
+  .pie-legal{
+    display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;
+    padding:22px 0 30px;font-size:11.5px;color:var(--mute);line-height:1.5;
+  }
+  .pie-mark{height:22px;width:auto;opacity:.85;flex:none}
+  .pie-legal > span:first-of-type{flex:1;min-width:240px}
+  .pie-year b{font-weight:800;color:var(--mute-2)}
 
   @media (max-width:520px){
     .stats{grid-template-columns:1fr 1fr}
@@ -466,7 +559,7 @@
   @media (min-width:900px){
     :root{--pad:28px}
     /* Pantalla completa menos la barra, para que el tráiler respire */
-    .hero{min-height:calc(100vh - 62px);padding:40px 0 56px}
+    .hero{min-height:100vh;padding:calc(var(--barh) + 40px) 0 56px}
     .hero h1{font-size:clamp(76px,8.6vw,132px)}
     .hero-chips{gap:8px}
     .dhero{min-height:clamp(320px,26vw,420px)}
@@ -482,19 +575,66 @@
 </style>
 
 <div class="wrap">
-  <header class="bar">
-    <button class="brand" id="brand" aria-label="StreamVe — ir al inicio">
-      <img class="brand-lockup" src="assets/logo-full.png" alt="StreamVe">
-    </button>
-    <div class="seg">
-      <button id="tabPersonal" aria-pressed="true">PERSONAL</button>
-      <button id="tabMayor" class="on-red" aria-pressed="false">MAYORISTA</button>
+  <header class="bar" id="bar">
+    <div class="bar-in">
+      <button class="brand" id="brand" aria-label="StreamVe — ir al inicio">
+        <img class="brand-lockup" src="assets/logo-full.png" alt="StreamVe">
+      </button>
+      <span class="live" id="live"><i></i><b>—</b> disponibles</span>
+      <div class="seg">
+        <button id="tabPersonal" aria-pressed="true">PERSONAL</button>
+        <button id="tabMayor" class="on-red" aria-pressed="false">MAYORISTA</button>
+      </div>
+      <a class="bar-wa" id="barWa" target="_blank" rel="noopener" aria-label="Escribir por WhatsApp">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-3-.2-.3A8 8 0 1 1 12 20zm4.4-5.8c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5 0a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.3-1.7c-.2-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.8c-.2-.4-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c1.6.6 2.2.7 3 .6a2.5 2.5 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .1-1.2z"/></svg>
+      </a>
     </div>
   </header>
   <main id="view"></main>
-  <div class="foot">
-    STREAM·VE · Reventa independiente de accesos. Sin afiliación con las plataformas. Precios en USD.
-  </div>
+
+  <footer class="pie">
+    <div class="pie-in">
+      <div class="pie-cta">
+        <div>
+          <div class="kicker">SOPORTE</div>
+          <h2 class="display">¿Algo no<br>funciona?</h2>
+          <p>Contestamos hasta medianoche, que es cuando se cae. Reposición en menos de una hora.</p>
+        </div>
+        <a class="btn btn-primary pie-wa" id="pieWa" target="_blank" rel="noopener">ESCRIBINOS POR WHATSAPP</a>
+      </div>
+
+      <div class="pie-cols">
+        <div>
+          <h3>SERVICIOS</h3>
+          <ul id="pieServicios"></ul>
+        </div>
+        <div>
+          <h3>CÓMO FUNCIONA</h3>
+          <ul>
+            <li><span>01</span> Pagás por Binance o Pago Móvil</li>
+            <li><span>02</span> Entregamos a mano en minutos</li>
+            <li><span>03</span> Ves en TV, teléfono o PC</li>
+            <li><span>04</span> Renovás con la misma clave</li>
+          </ul>
+        </div>
+        <div>
+          <h3>PAGOS</h3>
+          <ul class="plana">
+            <li>Binance Pay · USDT</li>
+            <li>Pago Móvil en bolívares</li>
+          </ul>
+          <h3 class="sep">ATENCIÓN</h3>
+          <ul class="plana"><li>Todos los días, 9:00 a 00:00</li></ul>
+        </div>
+      </div>
+
+      <div class="pie-legal">
+        <img class="pie-mark" src="assets/logo-mark.png" alt="">
+        <span>Reventa independiente de accesos. Sin afiliación ni respaldo de las plataformas. Precios en dólares.</span>
+        <span class="pie-year">© <b id="pieYear">2026</b> StreamVe</span>
+      </div>
+    </div>
+  </footer>
 </div>
 
 <script>
@@ -844,6 +984,7 @@ function render(){
   $('#view').innerHTML = html;
   $('#tabPersonal').setAttribute('aria-pressed', String(p !== 'mayorista'));
   $('#tabMayor').setAttribute('aria-pressed', String(p === 'mayorista'));
+  document.body.classList.toggle('en-home', p === 'home');
   ajustarFlechas();
   arrancarVideo();
 }
@@ -945,9 +1086,36 @@ document.addEventListener('input', e => {
   if (e.target.id === 'fUser') S.user = e.target.value;
 });
 
+/* ── cabecera y pie ── */
+const waLink = t => 'https://wa.me/' + CFG.whatsapp + '?text=' + encodeURIComponent(t);
+
+function montarChrome(){
+  const total = CAT.reduce((a, x) => a + stockDe(x), 0);
+  const live = $('#live');
+  if (live) live.querySelector('b').textContent = total;
+
+  $('#barWa').href = waLink('Hola, quiero preguntar por una cuenta.');
+  $('#pieWa').href = waLink('Hola, tengo un problema con mi cuenta.');
+  $('#pieYear').textContent = new Date().getFullYear();
+
+  /* Los servicios del pie salen del catálogo: una sola fuente de verdad */
+  $('#pieServicios').innerHTML = CAT.map(x =>
+    `<li><button data-abrir="${x.id}"><b>${esc(x.nombre)}</b><i>desde ${usd(Math.min.apply(null, x.planes.map(pl => pl.precio)))}</i></button></li>`
+  ).join('');
+}
+
+/* La barra se vuelve sólida apenas se sale de la portada */
+function barraSolida(){
+  const b = $('#bar');
+  if (b) b.classList.toggle('solido', window.scrollY > 40);
+}
+window.addEventListener('scroll', barraSolida, { passive:true });
+
 $('#brand').onclick        = () => ir('home');
 $('#tabPersonal').onclick  = () => ir('home');
 $('#tabMayor').onclick     = () => ir('mayorista');
 
+montarChrome();
+barraSolida();
 render();
 </script>
