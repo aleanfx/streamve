@@ -61,11 +61,12 @@
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   ::selection{background:var(--accent);color:var(--ink)}
 
-    /* El fondo va de un gris cálido arriba a casi negro abajo: al bajar,
-     la página se oscurece sola. Es lo que hace que se sienta profunda. */
+    /* El fondo arranca gris y se va a negro con el scroll. El color lo
+     interpola el JS en --fondo: atado al scroll y no a la altura del
+     documento, así el cambio se percibe apenas empezás a bajar. */
   .wrap{
     max-width:1440px;margin:0 auto;min-height:100vh;padding-top:var(--barh);
-    background:linear-gradient(180deg,#302c2a 0%,#282422 14%,#211e1c 38%,#1a1817 68%,#141212 100%);
+    background:var(--fondo,#302c2a);
   }
 
   /* ── header ── */
@@ -382,16 +383,41 @@
   .tile-desc > p{transition:padding-top .32s cubic-bezier(.2,.7,.3,1)}
   @media (hover:none){.tile-desc{display:none}}
 
-  /* ── steps strip ── */
-  .steps{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-    border-top:1px solid var(--line);margin-top:14px;
+  /* ── los cuatro pasos ── línea de tiempo, no cuatro cajas ── */
+  .flujo{padding:clamp(46px,7vw,86px) var(--pad) clamp(30px,4vw,50px)}
+  .flujo-head{max-width:34ch;margin-bottom:clamp(30px,4vw,48px)}
+  .flujo-head h2{margin:12px 0 0;font-size:clamp(26px,3.6vw,42px);line-height:1.04}
+
+  .pasos{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
   }
-  .steps > div{padding:16px var(--pad);border-right:1px solid var(--line)}
-  .steps > div:last-child{border-right:0}
-  .steps u{font-weight:800;font-size:11px;color:var(--accent);text-decoration:none}
-  .steps b{display:block;font-weight:800;font-size:15px;margin-top:5px}
-  .steps span{font-size:12px;color:var(--mute)}
+  .pasos li{
+    position:relative;overflow:hidden;
+    border-top:1px solid var(--line-2);
+    padding:26px 26px 34px 0;
+    transition:border-color .25s ease;
+  }
+  /* El cuadrito montado sobre la línea es el marcador del paso */
+  .pasos li::before{
+    content:"";position:absolute;left:0;top:-5px;width:9px;height:9px;
+    background:var(--line-2);transition:background .25s ease,box-shadow .25s ease;
+  }
+  .pasos li:hover{border-top-color:var(--accent)}
+  .pasos li:hover::before{background:var(--accent);box-shadow:0 0 0 5px rgba(236,48,19,.16)}
+
+  .pasos em{
+    display:block;font-style:normal;font-size:9.5px;letter-spacing:.2em;
+    font-weight:800;color:var(--accent-400);
+  }
+  /* La cifra grande es fondo, no dato: da ritmo sin competir con el texto */
+  .pasos i{
+    position:absolute;right:14px;top:8px;font-style:normal;
+    font-size:76px;font-weight:800;line-height:1;letter-spacing:-.06em;
+    color:rgba(255,255,255,.045);pointer-events:none;
+  }
+  .pasos b{display:block;font-size:23px;font-weight:800;letter-spacing:-.02em;margin-top:14px}
+  .pasos p{margin:9px 0 0;font-size:13.5px;line-height:1.5;color:var(--mute);max-width:30ch}
 
   /* ── filters ── */
   .filters{display:flex;gap:2px;overflow-x:auto;padding:14px var(--pad);scrollbar-width:none}
@@ -444,6 +470,110 @@
   .period button small{font-weight:400;font-size:11px}
   .period button[aria-pressed="true"]{background:var(--ink);color:var(--app);border-color:var(--ink)}
   .period button:not([aria-pressed="true"]):hover{background:var(--tile)}
+
+  /* ── ficha de producto ── dos columnas: el arte y la decisión ── */
+  .ficha{display:grid;grid-template-columns:1fr;gap:0}
+  @media (min-width:900px){
+    .ficha{grid-template-columns:minmax(340px,44%) 1fr;align-items:stretch}
+  }
+
+  /* La tarjeta va entera y centrada sobre una versión difuminada de sí
+     misma: antes se recortaba a lo ancho y se veía un zoom monstruoso. */
+  .ficha-art{
+    position:relative;overflow:hidden;background:#0e0d0c;
+    display:grid;place-items:center;
+    padding:clamp(30px,5vw,58px);min-height:clamp(280px,42vw,560px);
+  }
+  .ficha-blur{
+    position:absolute;inset:-8%;
+    background-size:cover;background-position:center;
+    filter:blur(34px) saturate(1.25) brightness(.5);
+  }
+  .ficha-art::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(65% 55% at 50% 45%,transparent,rgba(10,9,9,.72));
+  }
+  .ficha-art img{
+    position:relative;z-index:1;max-width:100%;max-height:clamp(240px,38vw,470px);
+    width:auto;height:auto;object-fit:contain;
+    border-radius:var(--r-card);box-shadow:0 30px 70px rgba(0,0,0,.66);
+  }
+
+  .ficha-info{position:relative;padding:clamp(26px,3.4vw,44px) var(--pad) 30px}
+  @media (min-width:900px){.ficha-info{padding-right:clamp(26px,3.4vw,44px)}}
+  .ficha-cerrar{
+    position:absolute;top:18px;right:var(--pad);width:42px;height:42px;
+    border:1px solid var(--line-2);background:transparent;color:var(--mute-2);
+    font-size:17px;transition:color .18s ease,border-color .18s ease;
+  }
+  .ficha-cerrar:hover{color:var(--ink);border-color:var(--ink)}
+  .ficha-info h2{margin:10px 0 0;font-size:clamp(34px,4.6vw,58px);padding-right:56px}
+  .ficha-desc{margin:14px 0 0;font-size:15px;line-height:1.5;color:var(--mute-2);max-width:46ch}
+
+  .ficha-datos{
+    display:grid;grid-template-columns:repeat(4,1fr);margin:26px 0 0;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .ficha-datos > div{padding:13px 10px 13px 0;border-right:1px solid var(--line)}
+  .ficha-datos > div:last-child{border-right:0}
+  .ficha-datos small{display:block;font-size:8.5px;letter-spacing:.18em;color:var(--dim);font-weight:800}
+  .ficha-datos b{display:block;font-size:15px;font-weight:800;margin-top:5px;letter-spacing:-.01em}
+  .ficha-datos b.no,.ficha-datos b.poco{color:var(--accent-400)}
+  @media (max-width:560px){
+    .ficha-datos{grid-template-columns:1fr 1fr}
+    .ficha-datos > div:nth-child(2){border-right:0}
+    .ficha-datos > div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  }
+
+  .ficha-tit{
+    font-size:9.5px;letter-spacing:.2em;font-weight:800;color:var(--dim);
+    margin:28px 0 12px;
+  }
+
+  /* Opción seleccionable: marca de radio + texto + precio. El estado
+     activo se dice con el acento, no rellenando de blanco. */
+  .planes{display:flex;flex-direction:column;gap:8px}
+  .plan{
+    display:flex;align-items:flex-start;gap:14px;text-align:left;width:100%;
+    padding:15px 16px;border:1px solid var(--line-2);border-radius:var(--r-card);
+    background:rgba(255,255,255,.02);color:var(--ink);
+    transition:border-color .18s ease,background .18s ease;
+  }
+  .plan:hover{border-color:var(--mute);background:rgba(255,255,255,.05)}
+  .plan[aria-pressed="true"]{border-color:var(--accent);background:rgba(236,48,19,.09)}
+  .plan-marca{
+    width:17px;height:17px;border-radius:50%;flex:none;margin-top:2px;
+    border:1.5px solid var(--line-2);transition:border-color .18s ease;
+  }
+  .plan[aria-pressed="true"] .plan-marca{
+    border-color:var(--accent);box-shadow:inset 0 0 0 4px var(--accent);
+  }
+  .plan-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .plan-txt b{font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+  .plan-txt em{font-style:normal;font-size:12.5px;color:var(--mute);line-height:1.4}
+  .plan-txt i{font-style:normal;font-size:10.5px;letter-spacing:.06em;color:var(--dim);margin-top:2px}
+  .plan-precio{
+    flex:none;font-size:19px;font-weight:800;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;
+  }
+  .plan-precio small{font-size:10.5px;font-weight:400;color:var(--mute);margin-left:2px}
+
+  .periodo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .periodo button{
+    position:relative;text-align:left;padding:15px 16px;
+    border:1px solid var(--line-2);border-radius:var(--r-card);
+    background:rgba(255,255,255,.02);color:var(--ink);
+    transition:border-color .18s ease,background .18s ease;
+  }
+  .periodo button:hover{border-color:var(--mute);background:rgba(255,255,255,.05)}
+  .periodo button[aria-pressed="true"]{border-color:var(--accent);background:rgba(236,48,19,.09)}
+  .periodo b{display:block;font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+  .periodo em{display:block;font-style:normal;font-size:12px;color:var(--mute);margin-top:4px;line-height:1.35}
+  .periodo .badge{
+    position:absolute;top:10px;right:10px;
+    font-size:10px;font-weight:800;letter-spacing:.06em;
+    background:var(--accent);color:var(--ink);padding:3px 6px;border-radius:3px;
+  }
 
   /* ── sticky footer bar ── */
   .paybar{
@@ -583,18 +713,18 @@
 
   /* ── pie ── cierre de venta arriba, utilidad abajo ── */
   .pie{
-    margin:56px calc(50% - 50vw) 0;background:var(--panel);
+    margin:36px calc(50% - 50vw) 0;background:var(--panel);
     border-top:2px solid var(--accent);
   }
   .pie-in{max-width:1440px;margin:0 auto;padding:0 var(--pad)}
 
   .pie-cta{
     display:flex;flex-wrap:wrap;gap:26px;align-items:flex-end;justify-content:space-between;
-    padding:clamp(34px,5vw,58px) 0 clamp(30px,4vw,44px);
+    padding:clamp(26px,3.4vw,38px) 0 clamp(24px,3vw,32px);
     border-bottom:1px solid var(--line);
   }
-  .pie-cta h2{margin:10px 0 0;font-size:clamp(30px,5.4vw,58px)}
-  .pie-cta p{margin:14px 0 0;max-width:42ch;color:var(--mute-2);font-size:15px}
+  .pie-cta h2{margin:8px 0 0;font-size:clamp(26px,3.4vw,40px)}
+  .pie-cta p{margin:10px 0 0;max-width:44ch;color:var(--mute-2);font-size:14px}
   .pie-wa{
     text-decoration:none;flex:none;padding:16px 22px;font-size:15px;
     display:inline-block;align-self:center;
@@ -602,14 +732,14 @@
 
   .pie-cols{
     display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
-    gap:30px 40px;padding:clamp(28px,4vw,42px) 0;
+    gap:24px 40px;padding:clamp(22px,2.8vw,30px) 0;
     border-bottom:1px solid var(--line);
   }
   .pie-cols h3{
-    margin:0 0 14px;font-size:10px;letter-spacing:.2em;font-weight:800;color:var(--accent-400);
+    margin:0 0 11px;font-size:10px;letter-spacing:.2em;font-weight:800;color:var(--accent-400);
   }
-  .pie-cols h3.sep{margin-top:26px}
-  .pie-cols ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .pie-cols h3.sep{margin-top:20px}
+  .pie-cols ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
   .pie-cols li{font-size:14px;color:var(--mute-2);line-height:1.35}
   .pie-cols li span{
     font-family:var(--f);font-weight:800;font-size:11px;color:var(--dim);margin-right:7px;
@@ -624,7 +754,7 @@
 
   .pie-legal{
     display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;
-    padding:22px 0 30px;font-size:11.5px;color:var(--mute);line-height:1.5;
+    padding:16px 0 22px;font-size:11px;color:var(--mute);line-height:1.5;
   }
   .pie-mark{height:22px;width:auto;opacity:.85;flex:none}
   .pie-legal > span:first-of-type{flex:1;min-width:240px}
@@ -686,7 +816,6 @@
       </button>
       <div class="estado" id="estado">
         <span><u>ATENCIÓN</u><b id="estAtencion">—</b></span>
-        <span><u>EN STOCK</u><b id="estStock">—</b></span>
       </div>
       <div class="seg">
         <button id="tabPersonal" aria-pressed="true">PERSONAL</button>
@@ -705,7 +834,7 @@
         <div>
           <div class="kicker">SOPORTE</div>
           <h2 class="display">¿Algo no<br>funciona?</h2>
-          <p>Contestamos hasta medianoche, que es cuando se cae. Reposición en menos de una hora.</p>
+          <p>Escribinos de 8 de la mañana a 9 de la noche. Reposición en menos de una hora.</p>
         </div>
         <a class="btn btn-primary pie-wa" id="pieWa" target="_blank" rel="noopener">ESCRIBINOS POR WHATSAPP</a>
       </div>
@@ -731,7 +860,7 @@
             <li>Pago Móvil en bolívares</li>
           </ul>
           <h3 class="sep">ATENCIÓN</h3>
-          <ul class="plana"><li>Todos los días, 9:00 a 00:00</li></ul>
+          <ul class="plana"><li>Todos los días, 8:00 a 21:00</li></ul>
         </div>
       </div>
 
@@ -755,8 +884,8 @@ const CFG = {
   tasaBs:          36.5,
   descuentoAnual:  0.15,     // 12 meses = −15%
   minMayorista:    10,
-  abreHora:        9,       // horario de atención, en 24 h
-  cierraHora:      24,
+  abreHora:        8,       // horario de atención, hora de Venezuela
+  cierraHora:      21,
   whatsapp:        '584140000000',
   binanceCorreo:   'pagos@streamve.com',
   binanceRed:      'USDT · BEP20',
@@ -926,7 +1055,7 @@ function vistaHome(){
         ['REPOSICIÓN', 'Menos de 1 h', 'No esperás al día siguiente'],
         ['RENOVACIÓN', 'Misma clave', 'No reconfigurás el televisor'],
         ['ENTREGA', CFG.ventanaEntrega, 'A mano, no un robot'],
-        ['ATENCIÓN', 'Hasta medianoche', 'Que es cuando falla'],
+        ['ATENCIÓN', '8:00 a 21:00', 'Todos los días, hora de Venezuela'],
         ['PAGOS', 'Binance y Pago Móvil', 'En dólares o en bolívares']
       ].map(([u, b, e]) => `<span class="tk"><u>${esc(u)}</u><b>${esc(b)}</b><em>${esc(e)}</em></span>`).join('');
       return its + its;   /* duplicado: el bucle no tiene salto */
@@ -940,12 +1069,18 @@ function vistaHome(){
       <button class="rail-nav next" data-scroll="${ri}" data-dir="1" aria-label="Ver siguientes">›</button>
     </div>
   `).join('')}
-  <div class="steps">
-    <div><u>01</u><b>Pagas</b><span>Binance o Pago Móvil</span></div>
-    <div><u>02</u><b>Entregamos</b><span>A mano, ${esc(CFG.ventanaEntrega)}</span></div>
-    <div><u>03</u><b>Ves</b><span>TV, teléfono, PC</span></div>
-    <div><u>04</u><b>Renovamos</b><span>Misma clave</span></div>
-  </div>`;
+  <section class="flujo">
+    <div class="flujo-head">
+      <span class="kicker">CÓMO FUNCIONA</span>
+      <h2 class="display">De tu pago a tu pantalla<br>en menos de veinte minutos.</h2>
+    </div>
+    <ol class="pasos">
+      <li><em>MINUTO 0</em><i>01</i><b>Pagás</b><p>Binance en dólares o Pago Móvil en bolívares. Mandás la captura y listo.</p></li>
+      <li><em>${esc(CFG.ventanaEntrega).toUpperCase()}</em><i>02</i><b>Entregamos</b><p>A mano, revisada antes de mandártela. No es un robot escupiendo claves.</p></li>
+      <li><em>AL INSTANTE</em><i>03</i><b>Ves</b><p>En el televisor, en el teléfono y en la computadora. Donde quieras.</p></li>
+      <li><em>CADA MES</em><i>04</i><b>Renovamos</b><p>Con la misma clave. No reconfigurás nada, no reinstalás nada.</p></li>
+    </ol>
+  </section>`;
 }
 
 function vistaCatalogo(){
@@ -958,35 +1093,72 @@ function vistaCatalogo(){
   <div class="grid">${lista.map(x => tileHTML(x, CAT.indexOf(x))).join('')}</div>`;
 }
 
+/* Qué te llevás con cada plan, en una línea */
+const PLAN_DESC = {
+  pantalla:'Una pantalla con tu propio perfil y PIN.',
+  perfil:'Un perfil dentro de una cuenta compartida.',
+  completa:'La cuenta entera. Vos controlás la clave y los perfiles.'
+};
+
 function vistaDetalle(){
-  const x = svc(), p = plan(), i = CAT.indexOf(x);
+  const x = svc(), p = plan();
   const t = totalActual();
+  const arte = x.card || '';
+  const ahorro = plan().precio * 12 * CFG.descuentoAnual;
+
   return `
-  <section class="dhero">
-    ${artHTML(x, i, 'hero-veil')}
-    <button class="close" data-cerrar="1" aria-label="Cerrar">✕</button>
-    <div class="kicker">${esc(x.cat)}</div>
-    <h2 class="display">${esc(x.nombre)}</h2>
-  </section>
-  <div class="stats">
-    <div><small>GARANTÍA</small><b>${CFG.garantiaDias}<i> días</i></b></div>
-    <div><small>ENTREGA</small><b>${esc(CFG.ventanaEntrega)}</b></div>
-    <div><small>RENOVABLE</small><b style="color:${x.renovable ? 'var(--ink)' : 'var(--accent-400)'}">${x.renovable ? 'Sí' : 'No'}</b></div>
-    <div><small>QUEDAN</small><b style="color:${p.stock <= 5 ? 'var(--accent-400)' : 'var(--ink)'}">${p.stock} u.</b></div>
-  </div>
-  <div style="padding:18px var(--pad)">
-    <div class="opts">
-      ${x.planes.map(pl => `<button class="opt" data-plan="${pl.k}" aria-pressed="${pl.k === p.k}">
-        <b>${esc(pl.etq)}</b><span>${usd(pl.precio)}</span></button>`).join('')}
+  <div class="ficha">
+    <div class="ficha-art">
+      <div class="ficha-blur" style="background-image:url('${arte}')"></div>
+      <img src="${arte}" alt="${esc(x.nombre)}" onerror="this.style.visibility='hidden'">
     </div>
-    <div class="period">
-      <button data-meses="1"  aria-pressed="${S.meses === 1}">1 MES</button>
-      <button data-meses="12" aria-pressed="${S.meses === 12}">12 MESES <small>−${Math.round(CFG.descuentoAnual * 100)}%</small></button>
+
+    <div class="ficha-info">
+      <button class="ficha-cerrar" data-cerrar="1" aria-label="Volver">✕</button>
+      <div class="kicker">${esc(x.cat)}</div>
+      <h2 class="display">${esc(x.nombre)}</h2>
+      <p class="ficha-desc">${esc(DESC[x.id] || '')}</p>
+
+      <div class="ficha-datos">
+        <div><small>GARANTÍA</small><b>${CFG.garantiaDias} días</b></div>
+        <div><small>ENTREGA</small><b>${esc(CFG.ventanaEntrega)}</b></div>
+        <div><small>RENOVABLE</small><b class="${x.renovable ? '' : 'no'}">${x.renovable ? 'Sí' : 'No'}</b></div>
+        <div><small>QUEDAN</small><b class="${p.stock <= 5 ? 'poco' : ''}">${p.stock} u.</b></div>
+      </div>
+
+      <h3 class="ficha-tit">ELEGÍ TU ACCESO</h3>
+      <div class="planes">
+        ${x.planes.map(pl => `
+          <button class="plan" data-plan="${pl.k}" aria-pressed="${pl.k === p.k}">
+            <span class="plan-marca"></span>
+            <span class="plan-txt">
+              <b>${esc(pl.etq)}</b>
+              <em>${esc(PLAN_DESC[pl.k] || '')}</em>
+              <i>${pl.stock <= 5 ? 'Quedan ' + pl.stock : pl.stock + ' disponibles'}</i>
+            </span>
+            <span class="plan-precio">${usd(pl.precio)}<small>/mes</small></span>
+          </button>`).join('')}
+      </div>
+
+      <h3 class="ficha-tit">POR CUÁNTO TIEMPO</h3>
+      <div class="periodo">
+        <button data-meses="1" aria-pressed="${S.meses === 1}">
+          <b>1 mes</b><em>Renovás cuando quieras</em>
+        </button>
+        <button data-meses="12" aria-pressed="${S.meses === 12}">
+          <b>12 meses</b><em>Ahorrás ${usd(ahorro)} en el año</em>
+          <span class="badge">−${Math.round(CFG.descuentoAnual * 100)}%</span>
+        </button>
+      </div>
     </div>
   </div>
+
   <div class="paybar">
-    <div><div class="amt">${usd(t)}</div>${CFG.mostrarBolivares ? `<small>${bs(t)}</small>` : ''}</div>
-    <button class="btn btn-primary" data-ir="checkout" style="padding:15px 20px;font-size:15px">COMPRAR</button>
+    <div>
+      <div class="amt">${usd(t)}</div>
+      ${CFG.mostrarBolivares ? `<small>${bs(t)} · ${S.meses === 12 ? '12 meses' : '1 mes'}</small>` : ''}
+    </div>
+    <button class="btn btn-primary" data-ir="checkout" style="padding:15px 22px;font-size:15px">COMPRAR</button>
   </div>`;
 }
 
@@ -1260,9 +1432,6 @@ function abrirPortalSiHaceFalta(){
 const waLink = t => 'https://wa.me/' + CFG.whatsapp + '?text=' + encodeURIComponent(t);
 
 function montarChrome(){
-  const total = CAT.reduce((a, x) => a + stockDe(x), 0);
-  const st = $('#estStock');
-  if (st) st.textContent = total + ' u.';
   pintarAtencion();
 
   $('#barWa').href = waLink('Hola, quiero preguntar por una cuenta.');
@@ -1277,10 +1446,16 @@ function montarChrome(){
 
 /* Abierto o cerrado se calcula contra el horario real, no es un adorno:
    si son las 2 de la mañana, la web lo dice en vez de fingir. */
+/* La hora es la de Venezuela, no la del visitante: si alguien abre la
+   web desde España a las 3 de la tarde, acá son las 9 de la mañana. */
+function horaVE(){
+  return +new Intl.DateTimeFormat('en-US',
+    { timeZone:'America/Caracas', hour:'numeric', hour12:false }).format(new Date());
+}
 function pintarAtencion(){
   const el = $('#estAtencion');
   if (!el) return;
-  const h = new Date().getHours();
+  const h = horaVE();
   const abierto = h >= CFG.abreHora && h < CFG.cierraHora;
   const hh = n => String(n % 24).padStart(2,'0') + ':00';   // 24 se lee 00:00
   el.textContent = abierto ? 'HASTA ' + hh(CFG.cierraHora) : 'ABRE ' + hh(CFG.abreHora);
@@ -1288,19 +1463,25 @@ function pintarAtencion(){
 }
 setInterval(pintarAtencion, 60000);
 
-/* La barra se vuelve sólida apenas se sale de la portada */
-function barraSolida(){
+/* La barra se vuelve sólida apenas se sale de la portada, y el fondo se
+   va apagando de gris a negro en los primeros 800 px. */
+const F_ARRIBA = [48, 44, 42], F_ABAJO = [17, 15, 15];
+function alDesplazar(){
   const b = $('#bar');
   if (b) b.classList.toggle('solido', window.scrollY > 40);
+
+  const t = Math.min(1, window.scrollY / 800);
+  const c = F_ARRIBA.map((v, i) => Math.round(v + (F_ABAJO[i] - v) * t));
+  document.documentElement.style.setProperty('--fondo', `rgb(${c[0]},${c[1]},${c[2]})`);
 }
-window.addEventListener('scroll', barraSolida, { passive:true });
+window.addEventListener('scroll', alDesplazar, { passive:true });
 
 $('#brand').onclick        = () => ir('home');
 $('#tabPersonal').onclick  = () => ir('home');
 $('#tabMayor').onclick     = () => ir('mayorista');
 
 montarChrome();
-barraSolida();
+alDesplazar();
 render();
 abrirPortalSiHaceFalta();
 </script>
