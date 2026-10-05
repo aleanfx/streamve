@@ -1,20 +1,78 @@
-/* StreamVe — la tienda: estado de navegación, vistas y eventos.
-   Depende de ui.js y catalogo.js. */
+/* StreamVe — la tienda: rutas, vistas y eventos.
+   Depende de ui.js, catalogo.js y datos.js.
 
-const HIST = [
-  { codigo:'SV-4106', detalle:'12 u · Netflix, Disney+', estado:'ENTREGADO', monto:'$29,60' },
-  { codigo:'SV-4088', detalle:'20 u · Netflix, Spotify', estado:'ENTREGADO', monto:'$49,00' },
-  { codigo:'SV-4061', detalle:'10 u · Max',              estado:'ENTREGADO', monto:'$20,50' }
-];
+   La venta se cierra por WhatsApp: la web arma el pedido completo y lo
+   deja escrito en el chat. Ale atiende ahí; la web solo le ahorra el
+   ida y vuelta de "¿cuánto es?", "¿a dónde pago?". */
 
 /* ── estado ── */
 const S = {
-  pantalla:'home', sid:'nx', planK:'pantalla', meses:1,
-  metodo:'binance', ref:'', wa:'', user:'distribuidora.oriente',
-  auth:false, filtro:'Todo', cant:{}, volverA:'home', codigo:null
+  pantalla:'home', anterior:null, sid:'nx', planK:'pantalla', meses:1,
+  metodo:'binance', filtro:'Todo', codigo:null, codigoDe:'', enviado:false
 };
 
-/* ── helpers ── */
+const svc  = () => CAT.find(s => s.id === S.sid) || CAT[0];
+const plan = () => { const s = svc(); return s.planes.find(p => p.k === S.planK) || s.planes[0]; };
+const totalActual = () => {
+  const bruto = plan().precio * (S.meses === 12 ? 12 : 1);
+  return S.meses === 12 ? bruto * (1 - CFG.descuentoAnual) : bruto;
+};
+const mesesTxt = m => m === 12 ? '12 meses' : '1 mes';
+const desdeDe = x => Math.min.apply(null, x.planes.map(p => p.precio));
+
+/* El plan que se abre primero: el más barato que tenga stock */
+function planInicial(x){
+  const orden = x.planes.slice().sort((a, b) => a.precio - b.precio);
+  return (orden.find(pl => stockPlan(x.id, pl.k) > 0) || orden[0]).k;
+}
+
+/* ═══ rutas ═══
+   Cada pantalla tiene su link: Ale puede mandar por WhatsApp
+   streamve.vercel.app/#/netflix y el cliente cae directo en la ficha. */
+function rutaDe(p){
+  const x = svc();
+  return p === 'catalogo'  ? '#/catalogo'
+       : p === 'mayorista' ? '#/revendedores'
+       : p === 'detalle'   ? '#/' + x.slug
+       : p === 'pedido'    ? '#/' + x.slug + '/pedido'
+       : '#/';
+}
+
+function ir(p){
+  const h = rutaDe(p);
+  if (location.hash === h) aplicarRuta();
+  else location.hash = h;            // dispara hashchange → aplicarRuta
+}
+
+function aplicarRuta(){
+  const partes = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  let p = 'home';
+  if (partes[0] === 'catalogo') p = 'catalogo';
+  else if (partes[0] === 'revendedores') p = 'mayorista';
+  else if (partes[0]){
+    const x = CAT.find(s => s.slug === partes[0]);
+    if (x){
+      if (S.sid !== x.id){ S.sid = x.id; S.planK = planInicial(x); S.meses = 1; }
+      p = partes[1] === 'pedido' ? 'pedido' : 'detalle';
+    }
+  }
+  /* Un código por pedido: si cambia el servicio, el plan o los meses, es
+     otro pedido y lleva otro código. */
+  if (p === 'pedido'){
+    const clave = S.sid + S.planK + S.meses;
+    if (!S.codigo || S.codigoDe !== clave){
+      S.codigo = 'SV-' + (4100 + Math.floor(Math.random() * 5800));
+      S.codigoDe = clave; S.enviado = false;
+    }
+  }
+  if (p !== S.pantalla) S.anterior = S.pantalla;
+  S.pantalla = p;
+  window.scrollTo(0, 0);
+  render();
+}
+window.addEventListener('hashchange', aplicarRuta);
+
+/* ── piezas ── */
 
 function artHTML(x, i, veil){
   /* Si el servicio trae `card`, esa imagen ES el tile completo: tarjeta,
@@ -44,23 +102,37 @@ function artHTML(x, i, veil){
 function tileHTML(x, i){
   const st = stockDe(x), bajo = st <= 5;
   const badge = st === 0 ? 'AGOTADO' : bajo ? 'QUEDAN ' + st : st + ' LIBRES';
-  const desde = usd(Math.min.apply(null, x.planes.map(p => p.precio)));
   const micro = CFG.garantiaDias + 'd · ' + CFG.ventanaEntrega + ' · ' + (x.renovable ? 'renovable' : 'no renovable');
-  return `<button class="tile rise" style="animation-delay:${Math.min(i, 7) * 45}ms" data-abrir="${x.id}">
+  return `<a class="tile rise" href="${'#/' + x.slug}" style="animation-delay:${Math.min(i, 7) * 45}ms">
     <div class="art">
       ${artHTML(x, i)}
       <span class="art-badge${st === 0 ? ' agotado' : bajo ? ' bajo' : ''}">${badge}</span>
     </div>
     <div class="tile-foot">
       <div class="tile-name">${esc(x.nombre)}</div>
-      <div class="tile-price"><b>${desde}<small> /mes</small></b><em>VER →</em></div>
+      <div class="tile-price"><b>${usd(desdeDe(x))}<small> /mes</small></b><em>VER →</em></div>
       <div class="tile-micro">${esc(micro)}</div>
       <div class="tile-desc"><p>${esc(DESC[x.id] || '')}</p></div>
     </div>
-  </button>`;
+  </a>`;
 }
 
 /* ═══ pantallas ═══ */
+
+const PREGUNTAS = [
+  ['¿Qué pasa si mi cuenta deja de funcionar?',
+   `Nos escribís y la reponemos en menos de una hora, dentro de los ${CFG.garantiaDias} días de garantía. Te damos otro acceso y tu fecha de vencimiento queda igual.`],
+  ['¿Cómo renuevo?',
+   'Te avisamos por WhatsApp tres días antes de que venza. Pagás y seguís con la misma clave: no reconfigurás el televisor ni reinstalás nada.'],
+  ['¿Puedo ponerle PIN a mi perfil?',
+   'Sí. La pantalla es tuya: tu perfil y tu PIN. Lo único que no se toca es la contraseña de la cuenta ni los perfiles de los demás: eso hace que la cuenta se caiga para todos.'],
+  ['¿Cómo pago?',
+   'Por Binance en USDT o por Pago Móvil en bolívares, a la tasa BCV del día. Pagás, mandás la captura por WhatsApp y listo.'],
+  ['¿En qué dispositivos funciona?',
+   'Televisor, teléfono, tablet y computadora. Una pantalla es un dispositivo a la vez; si querés ver en varios al mismo tiempo, te conviene la cuenta completa.'],
+  ['¿Ustedes son Netflix o las otras plataformas?',
+   'No. Somos revendedores independientes: compramos las cuentas, las administramos y respondemos por ellas para que vos solo te ocupes de ver.']
+];
 
 function vistaHome(){
   const total = CAT.reduce((a, x) => a + stockDe(x), 0);
@@ -85,8 +157,8 @@ function vistaHome(){
         <span class="chip">RENOVABLE</span>
       </div>
       <div class="hero-cta">
-        <button class="btn btn-primary" data-ir="catalogo">VER CATÁLOGO</button>
-        <a class="btn btn-line" href="https://wa.me/${CFG.whatsapp}?text=${encodeURIComponent('Hola, quiero preguntar por una cuenta.')}" target="_blank" rel="noopener">WHATSAPP</a>
+        <a class="btn btn-primary" href="#/catalogo">VER CATÁLOGO</a>
+        <a class="btn btn-line" href="${waLink('Hola, quiero preguntar por una cuenta.')}" target="_blank" rel="noopener">${ICONO_WA}WHATSAPP</a>
       </div>
     </div>
   </section>
@@ -97,7 +169,7 @@ function vistaHome(){
         ['REPOSICIÓN', 'Menos de 1 h', 'No esperás al día siguiente'],
         ['RENOVACIÓN', 'Misma clave', 'No reconfigurás el televisor'],
         ['ENTREGA', CFG.ventanaEntrega, 'A mano, no un robot'],
-        ['ATENCIÓN', '8:00 am a 9:00 pm', 'Todos los días, hora de Venezuela'],
+        ['ATENCIÓN', hora12(CFG.abreHora) + ' a ' + hora12(CFG.cierraHora), 'Todos los días, hora de Venezuela'],
         ['PAGOS', 'Binance y Pago Móvil', 'En dólares o en bolívares']
       ].map(([u, b, e]) => `<span class="tk"><u>${esc(u)}</u><b>${esc(b)}</b><em>${esc(e)}</em></span>`).join('');
       return its + its;   /* duplicado: el bucle no tiene salto */
@@ -117,18 +189,40 @@ function vistaHome(){
       <h2 class="display">De tu pago a tu pantalla<br>en menos de veinte minutos.</h2>
     </div>
     <ol class="pasos">
-      <li><em>MINUTO 0</em><i>01</i><b>Pagás</b><p>Binance en dólares o Pago Móvil en bolívares. Mandás la captura y listo.</p></li>
+      <li><em>MINUTO 0</em><i>01</i><b>Pagás</b><p>Binance en dólares o Pago Móvil en bolívares. Mandás la captura por WhatsApp.</p></li>
       <li><em>${esc(CFG.ventanaEntrega).toUpperCase()}</em><i>02</i><b>Entregamos</b><p>A mano, revisada antes de mandártela. No es un robot escupiendo claves.</p></li>
       <li><em>AL INSTANTE</em><i>03</i><b>Ves</b><p>En el televisor, en el teléfono y en la computadora. Donde quieras.</p></li>
       <li><em>CADA MES</em><i>04</i><b>Renovamos</b><p>Con la misma clave. No reconfigurás nada, no reinstalás nada.</p></li>
     </ol>
+  </section>
+  <section class="faq">
+    <div class="faq-head">
+      <span class="kicker">PREGUNTAS</span>
+      <h2 class="display">Lo que todos<br>preguntan primero.</h2>
+      <p>¿Te quedó otra duda? <a href="${waLink('Hola, tengo una pregunta.')}" target="_blank" rel="noopener">Escribinos</a> y te contesta una persona.</p>
+    </div>
+    <div class="faq-lista">
+      ${PREGUNTAS.map(([q, a], i) => `
+        <details${i === 0 ? ' open' : ''}>
+          <summary><span>${String(i + 1).padStart(2, '0')}</span>${esc(q)}<i aria-hidden="true"></i></summary>
+          <p>${esc(a)}</p>
+        </details>`).join('')}
+    </div>
   </section>`;
 }
 
 function vistaCatalogo(){
   const cats = ['Todo','VIDEO','MÚSICA','ANIME'];
   const lista = CAT.filter(x => S.filtro === 'Todo' || x.cat === S.filtro);
+  const libres = lista.reduce((a, x) => a + stockDe(x), 0);
   return `
+  <div class="cat-head">
+    <div>
+      <span class="kicker">CATÁLOGO</span>
+      <h1 class="display">Elegí qué<br>vas a ver.</h1>
+    </div>
+    <p><b>${lista.length}</b> servicios · <b>${libres}</b> unidades libres ahora</p>
+  </div>
   <div class="filters">
     ${cats.map(c => `<button data-filtro="${esc(c)}" aria-pressed="${S.filtro === c}">${c === 'Todo' ? 'TODO' : c}</button>`).join('')}
   </div>
@@ -146,8 +240,8 @@ function vistaDetalle(){
   const x = svc(), p = plan();
   const t = totalActual();
   const arte = x.card || '';
+  const ahorro = p.precio * 12 * CFG.descuentoAnual;
   const stP = stockPlan(x.id, p.k);
-  const ahorro = plan().precio * 12 * CFG.descuentoAnual;
 
   return `
   <div class="ficha">
@@ -199,139 +293,202 @@ function vistaDetalle(){
   <div class="paybar">
     <div>
       <div class="amt">${usd(t)}</div>
-      ${CFG.mostrarBolivares ? `<small>${bs(t)} · ${S.meses === 12 ? '12 meses' : '1 mes'} · tasa BCV ${tasaTxt()}</small>` : ''}
+      ${CFG.mostrarBolivares ? `<small>${bs(t)} · ${mesesTxt(S.meses)} · tasa BCV ${tasaTxt()}</small>` : ''}
     </div>
     ${stP
-      ? `<button class="btn btn-primary" data-ir="checkout" style="padding:15px 22px;font-size:15px">COMPRAR</button>`
-      : `<a class="btn btn-line" style="text-decoration:none;padding:15px 22px;font-size:15px" target="_blank" rel="noopener"
+      ? `<a class="btn btn-primary paybar-cta" href="${rutaDe('pedido')}">COMPRAR</a>`
+      : `<a class="btn btn-line paybar-cta" target="_blank" rel="noopener"
            href="${waLink('Hola, ¿cuándo vuelven a tener ' + x.nombre + ' (' + p.etq + ')?')}">AVISARME CUANDO HAYA</a>`}
   </div>`;
 }
 
-function vistaCheckout(){
-  const x = svc(), p = plan(), t = totalActual();
-  const bin = S.metodo === 'binance';
-  return `
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px var(--pad)">
-    <div>
-      <div class="kicker">PAGO</div>
-      <div style="font-weight:800;font-size:24px;line-height:1;margin-top:6px">${esc(x.nombre)} · ${esc(p.etq)}</div>
-      <div class="mute" style="font-size:12px;margin-top:4px">${S.meses === 12 ? '12 meses' : '1 mes'} · garantía ${CFG.garantiaDias} días</div>
-    </div>
-    <button class="close" style="position:static" data-ir="detalle" aria-label="Volver">✕</button>
-  </div>
-  <div class="methods">
-    <button data-metodo="binance" aria-pressed="${bin}"><b>BINANCE</b><span>USDT · BEP20</span></button>
-    <button data-metodo="pm" aria-pressed="${!bin}"><b>PAGO MÓVIL</b><span>Bs del día</span></button>
-  </div>
-  <div class="paydata">
-    <div><span class="mute">${bin ? 'Correo' : 'Banco'}</span><b>${esc(bin ? CFG.binanceCorreo : CFG.pmBanco)}</b></div>
-    <div><span class="mute">${bin ? 'Red' : 'Teléfono'}</span><b>${esc(bin ? CFG.binanceRed : CFG.pmTelefono)}</b></div>
-    <div><span class="mute">Monto exacto</span><b class="amt-red">${bin ? usd(t) + ' USDT' : bs(t)}</b></div>
-    ${bin ? '' : `<div><span class="mute">Tasa BCV del día</span><b>${tasaTxt()} Bs/$</b></div>`}
-  </div>
-  <div class="fields">
-    <input id="fRef" placeholder="Referencia" value="${esc(S.ref)}">
-    <input id="fWa"  placeholder="WhatsApp"   value="${esc(S.wa)}">
-  </div>
-  <div class="paybar">
-    <div><div class="amt">${usd(t)}</div>${CFG.mostrarBolivares ? `<small>${bs(t)}</small>` : ''}</div>
-    <button class="btn btn-primary" data-confirmar="1" style="padding:15px 20px;font-size:15px">YA PAGUÉ</button>
+/* ── Tu pedido ──
+   Antes eran dos pantallas (pago y pedido) con un formulario de referencia
+   en el medio. Ahora es una sola, en tres pasos, y termina en WhatsApp:
+   el cliente escribe desde su número y la captura va en el mismo chat. */
+function mensajePedido(){
+  const x = svc(), p = plan(), t = totalActual(), bin = S.metodo === 'binance';
+  return [
+    'Hola StreamVe, quiero hacer este pedido:',
+    '',
+    '*Pedido ' + S.codigo + '*',
+    x.nombre + ' · ' + p.etq + ' · ' + mesesTxt(S.meses),
+    'Total: ' + (bin ? usd(t) + ' en USDT' : bs(t) + ' (tasa BCV ' + tasaTxt() + ')'),
+    'Pago: ' + (bin ? 'Binance' : 'Pago Móvil'),
+    '',
+    'Te mando la captura del pago.'
+  ].join('\n');
+}
+
+function filaCobro(etq, valor, pegar){
+  return `<div class="cobro-fila">
+    <span>${esc(etq)}</span>
+    <b>${esc(valor)}</b>
+    ${pegar ? `<button class="copiar" data-copiar="${esc(pegar)}">COPIAR</button>` : '<i></i>'}
   </div>`;
 }
 
 function vistaPedido(){
-  const x = svc(), p = plan();
-  const hora = new Date().toLocaleTimeString('es-VE', { hour:'numeric', minute:'2-digit' });
-  const msg = encodeURIComponent(`Hola, soy ${S.wa || 'un cliente'}. Pedido ${S.codigo}: ${x.nombre} · ${p.etq} · ${S.meses === 12 ? '12 meses' : '1 mes'}. Referencia: ${S.ref || '(sin referencia)'}`);
-  return `
-  <div class="ohead">
-    <div class="kicker">PEDIDO ${esc(S.codigo)}</div>
-    <h2>Entregamos en ${esc(CFG.ventanaEntrega)}.</h2>
-    <div style="font-size:13px;color:var(--mute-2);margin-top:8px">Te escribimos por WhatsApp.</div>
-  </div>
-  <div class="track">
-    <div><i style="background:var(--accent)"></i><b>Pago</b><small>${hora}</small></div>
-    <div><i style="background:var(--accent)"></i><b>Verificado</b><small>${hora}</small></div>
-    <div><i style="border:2px solid var(--accent-400)"></i><b>Preparando</b><small style="color:var(--accent-400)">en curso</small></div>
-    <div><i style="border:2px solid var(--line-2)"></i><b style="color:var(--dim)">Entregado</b><small style="color:var(--dim)">—</small></div>
-  </div>
-  <div style="display:flex;flex-wrap:wrap;gap:2px;padding:16px var(--pad) 22px;border-top:1px solid var(--line)">
-    <a class="btn btn-primary" style="text-decoration:none;display:inline-block" href="https://wa.me/${CFG.whatsapp}?text=${msg}" target="_blank" rel="noopener">ABRIR WHATSAPP</a>
-    <button class="btn btn-line" data-ir="catalogo">SEGUIR VIENDO</button>
-  </div>`;
-}
+  const x = svc(), p = plan(), t = totalActual();
+  const bin = S.metodo === 'binance';
+  const abierto = abiertoAhora();
+  const hora = new Date().toLocaleTimeString('es-VE',
+    { hour:'numeric', minute:'2-digit', timeZone:'America/Caracas' });
+  const msg = mensajePedido();
 
-function vistaLogin(){
   return `
-  <div class="login">
-    <div class="login-bg"></div>
-    <div class="login-veil"></div>
-    <div class="login-inner">
-    <div class="kicker">MAYORISTA · DESDE ${CFG.minMayorista} U.</div>
-    <div class="display" style="font-size:clamp(30px,7vw,52px);margin:10px 0 0">Precio<br>unitario.</div>
-    <div class="form">
-      <input id="fUser" value="${esc(S.user)}" placeholder="Usuario">
-      <input type="password" value="demo1234" placeholder="Contraseña">
-      <button class="btn btn-primary" data-entrar="1" style="padding:15px 18px;font-size:15px">ENTRAR</button>
-      <div class="mute" style="font-size:11px">Cuentas por aprobación · WhatsApp</div>
-    </div>
-    </div>
-  </div>`;
-}
-
-function vistaPanel(){
-  const filas = CAT.map(x => {
-    const c = S.cant[x.id] || 0, st = stockPlan(x.id, x.planes[0].k), bajo = st <= 5;
-    return `<div class="wrow">
-      <div class="nm"><b>${esc(x.nombre)}</b><small>${esc(x.planes[0].etq)} · ${st} en stock</small></div>
-      <div class="pr" style="color:${bajo ? 'var(--accent-400)' : 'var(--ink)'}">${usd(x.planes[0].precioMayorista)}</div>
-      <div class="step">
-        <button class="minus" data-menos="${x.id}" aria-label="Quitar uno">−</button>
-        <span style="color:${c > 0 ? 'var(--accent-400)' : 'var(--mute)'}">${c}</span>
-        <button class="plus" data-mas="${x.id}" aria-label="Agregar uno">+</button>
+  <div class="pedido">
+    <aside class="pedido-res">
+      <div class="pedido-arte">
+        <div class="ficha-blur" style="background-image:url('${x.card || ''}')"></div>
+        <img src="${x.card || ''}" alt="${esc(x.nombre)}" onerror="this.style.visibility='hidden'">
       </div>
-    </div>`;
-  }).join('');
+      <div class="pedido-res-txt">
+        <div class="kicker">PEDIDO ${esc(S.codigo)}</div>
+        <h1 class="display">${esc(x.nombre)}</h1>
+        <dl class="pedido-lin">
+          <div><dt>Acceso</dt><dd>${esc(p.etq)}</dd></div>
+          <div><dt>Tiempo</dt><dd>${mesesTxt(S.meses)}${S.meses === 12 ? ` <s>${usd(p.precio * 12)}</s>` : ''}</dd></div>
+          <div><dt>Garantía</dt><dd>${CFG.garantiaDias} días</dd></div>
+          <div><dt>Entrega</dt><dd>${esc(CFG.ventanaEntrega)}</dd></div>
+        </dl>
+        <div class="pedido-total">
+          <small>TOTAL</small>
+          <b>${usd(t)}</b>
+          <span>${bs(t)} · tasa BCV ${tasaTxt()}</span>
+        </div>
+        <a class="pedido-cambiar" href="${rutaDe('detalle')}">← Cambiar plan o tiempo</a>
+      </div>
+    </aside>
 
-  const unidades = CAT.reduce((a, x) => a + (S.cant[x.id] || 0), 0);
-  const monto = CAT.reduce((a, x) => a + (S.cant[x.id] || 0) * x.planes[0].precioMayorista, 0);
-  const nota = unidades === 0 ? 'Suma cantidades'
-             : unidades < CFG.minMayorista ? 'Faltan ' + (CFG.minMayorista - unidades) + ' u.'
-             : 'Listo para enviar';
-  const listo = unidades >= CFG.minMayorista;
+    <ol class="pedido-pasos">
+      <li class="paso">
+        <div class="paso-num">1</div>
+        <div class="paso-cuerpo">
+          <h2>Pagá</h2>
+          <p class="paso-sub">Elegí cómo. Los datos se copian con un toque.</p>
+          <div class="metodos">
+            <button data-metodo="binance" aria-pressed="${bin}">
+              <span class="metodo-tag" style="--c:#F0B90B">USDT</span>
+              <b>Binance</b><em>Binance Pay o depósito BEP20</em>
+            </button>
+            <button data-metodo="pm" aria-pressed="${!bin}">
+              <span class="metodo-tag" style="--c:#5fbf7a">Bs</span>
+              <b>Pago Móvil</b><em>En bolívares, tasa BCV del día</em>
+            </button>
+          </div>
+          <div class="cobro">
+            ${bin ? `
+              ${filaCobro('Correo Binance Pay', CFG.binanceCorreo, CFG.binanceCorreo)}
+              ${filaCobro('Pay ID', CFG.binancePayId, CFG.binancePayId.replace(/\s/g, ''))}
+              ${filaCobro('Red', CFG.binanceRed)}
+            ` : `
+              ${filaCobro('Banco', CFG.pmBanco, CFG.pmBanco.slice(0, 4))}
+              ${filaCobro('Teléfono', CFG.pmTelefono, CFG.pmTelefono.replace(/\s/g, ''))}
+              ${filaCobro('Cédula', CFG.pmCedula, CFG.pmCedula.replace(/[^\dVEJ]/gi, ''))}
+            `}
+            <div class="cobro-monto">
+              <span>Monto exacto</span>
+              <b>${bin ? usd(t).replace('$', '') + ' <small>USDT</small>' : bs(t)}</b>
+              <button class="copiar" data-copiar="${bin ? t.toFixed(2) : montoPegable(t * CFG.tasaBs)}">COPIAR</button>
+            </div>
+          </div>
+        </div>
+      </li>
 
-  return `
-  <div class="whead">
-    <div><b>${esc(S.user)}</b><small>Stock hace 4 min · mínimo ${CFG.minMayorista} u.</small></div>
-    <button class="btn btn-line" data-repetir="1" style="padding:11px 14px;font-size:12px">REPETIR · 12 u · $29,60</button>
+      <li class="paso">
+        <div class="paso-num">2</div>
+        <div class="paso-cuerpo">
+          <h2>Mandá el pedido</h2>
+          <p class="paso-sub">Se abre WhatsApp con este mensaje listo. Adjuntá la captura y enviá.</p>
+          <div class="chat">
+            <div class="chat-burbuja">
+              ${burbujaHTML(msg)}
+              <span class="chat-meta">${esc(hora)} <svg viewBox="0 0 16 11" aria-hidden="true"><path d="M11.1.3 5.4 7.6 2.8 5.2l-.9 1 3.6 3.4L12.1 1.2zM15 .3 9.3 7.6l-.6-.5-.9 1 1.6 1.5L16 1.2z"/></svg></span>
+            </div>
+          </div>
+          <a class="btn-wa" data-enviado="1" href="${waLink(msg)}" target="_blank" rel="noopener">
+            ${ICONO_WA}<span>${S.enviado ? 'ABRIR WHATSAPP DE NUEVO' : 'ENVIAR POR WHATSAPP'}</span>
+          </a>
+        </div>
+      </li>
+
+      <li class="paso">
+        <div class="paso-num">3</div>
+        <div class="paso-cuerpo">
+          <h2>Recibís</h2>
+          <p class="paso-sub">Por el mismo chat, en ${esc(CFG.ventanaEntrega)}: tu acceso y tu link personal para ver cuándo vence y renovar con un toque.</p>
+          <div class="estado-at ${abierto ? 'abierto' : 'cerrado'}">
+            <i></i>
+            ${abierto
+              ? `<span><b>Estamos atendiendo.</b> Hasta las ${hora12(CFG.cierraHora)}, hora de Venezuela.</span>`
+              : `<span><b>Ahora estamos cerrados.</b> Abrimos a las ${hora12(CFG.abreHora)} y tu pedido es el primero de la fila.</span>`}
+          </div>
+        </div>
+      </li>
+    </ol>
   </div>
-  <div style="padding:0 var(--pad)">${filas}</div>
-  <div style="padding:16px var(--pad) 6px"><div style="font-weight:800;font-size:11px;letter-spacing:.12em;color:var(--mute)">ÚLTIMOS PEDIDOS</div></div>
-  <div style="padding:0 var(--pad) 16px">
-    ${HIST.map(h => `<div class="hrow"><b>${h.codigo}</b><span class="mute" style="font-size:11px">${esc(h.detalle)}</span><span class="st">${h.estado}</span><b>${h.monto}</b></div>`).join('')}
-  </div>
-  <div class="paybar">
-    <div><div class="amt-sm">${usd(monto)} · ${unidades} u.</div><small style="color:${listo ? 'var(--accent-400)' : 'var(--mute)'}">${nota}</small></div>
-    <button class="btn btn-primary" data-enviar="1" style="padding:15px 20px;font-size:15px" ${listo ? '' : 'disabled'}>ENVIAR</button>
+
+  <div class="paybar paybar-movil">
+    <div><div class="amt">${usd(t)}</div><small>${bs(t)}</small></div>
+    <a class="btn-wa compacto" data-enviado="1" href="${waLink(msg)}" target="_blank" rel="noopener">${ICONO_WA}<span>ENVIAR PEDIDO</span></a>
   </div>`;
+}
+
+/* ── Revendedores ──
+   No se muestran los precios mayoristas acá: los ve cualquiera, y el que
+   compra una pantalla no tiene por qué ver el precio del revendedor. */
+function vistaMayorista(){
+  /* Redondeado hacia abajo, de a 5: "hasta 25%" se lee mejor que "26%" y
+     nunca promete más de lo que hay. */
+  const ahorro = 5 * Math.floor(20 * Math.max.apply(null, CAT.flatMap(x =>
+    x.planes.filter(p => p.precioMayorista).map(p => 1 - p.precioMayorista / p.precio))));
+  return `
+  <section class="reve">
+    <div class="reve-bg"></div>
+    <div class="reve-veil"></div>
+    <div class="reve-in">
+      <div class="reve-pitch">
+        <div class="kicker">REVENDEDORES · DESDE ${CFG.minMayorista} U.</div>
+        <h1 class="display">Vendé vos.<br>Nosotros<br>respondemos.</h1>
+        <ul class="reve-puntos">
+          <li><b>Hasta ${ahorro}% menos</b><span>por unidad que el precio público.</span></li>
+          <li><b>Entrega al instante</b><span>Comprás con saldo y la cuenta ya está asignada.</span></li>
+          <li><b>Tu propio panel</b><span>A quién le vendiste cada cuenta y cuándo vence.</span></li>
+          <li><b>La garantía es nuestra</b><span>Si se cae, la reponemos nosotros, no vos.</span></li>
+        </ul>
+        <a class="btn btn-line" target="_blank" rel="noopener"
+           href="${waLink('Hola, quiero ser revendedor de StreamVe.')}">${ICONO_WA}QUIERO SER REVENDEDOR</a>
+      </div>
+
+      <form class="reve-login" data-login="1" autocomplete="on">
+        <b>Ya tengo cuenta</b>
+        <label>Usuario<input id="fUser" name="usuario" value="distribuidora.oriente" autocomplete="username"></label>
+        <label>Contraseña<input id="fPass" name="clave" type="password" value="demo1234" autocomplete="current-password"></label>
+        <button class="btn btn-primary" type="submit">ENTRAR AL PANEL</button>
+        <small>Las cuentas se aprueban a mano. ¿Olvidaste la clave? <a href="${waLink('Hola, olvidé la clave de mi panel de revendedor.')}" target="_blank" rel="noopener">Escribinos</a>.</small>
+      </form>
+    </div>
+  </section>`;
 }
 
 /* ═══ render + eventos ═══ */
 function render(){
   const p = S.pantalla;
   const html =
-      p === 'home'      ? vistaHome()
-    : p === 'catalogo'  ? vistaCatalogo()
+      p === 'catalogo'  ? vistaCatalogo()
     : p === 'detalle'   ? vistaDetalle()
-    : p === 'checkout'  ? vistaCheckout()
     : p === 'pedido'    ? vistaPedido()
-    : p === 'mayorista' ? (S.auth ? vistaPanel() : vistaLogin())
+    : p === 'mayorista' ? vistaMayorista()
     : vistaHome();
   $('#view').innerHTML = html;
   $('#tabPersonal').setAttribute('aria-pressed', String(p !== 'mayorista'));
   $('#tabMayor').setAttribute('aria-pressed', String(p === 'mayorista'));
   document.body.classList.toggle('en-home', p === 'home');
+  document.body.dataset.pantalla = p;
+  document.title = p === 'detalle' || p === 'pedido' ? svc().nombre + ' · StreamVe'
+                 : p === 'mayorista' ? 'Revendedores · StreamVe'
+                 : 'StreamVe';
   ajustarFlechas();
   arrancarVideo();
 }
@@ -346,7 +503,6 @@ const ICONO_AUDIO = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.
 
 function arrancarVideo(){
   const v = document.querySelector('.hero-video');
-  const b = document.querySelector('.hero-sound');
   if (!v) { if (obsHero) { obsHero.disconnect(); obsHero = null; } return; }
 
   v.muted = !sonidoOn;
@@ -368,13 +524,14 @@ function arrancarVideo(){
   obsHero.observe(v);
 }
 
-/* El navegador exige un gesto del usuario antes de permitir audio. En
-   cuanto ocurre el primero — un clic, una tecla, un scroll — encendemos
-   el sonido si el hero sigue en pantalla. Antes de eso es imposible. */
+/* El navegador exige un gesto del usuario antes de permitir audio: un
+   clic, una tecla o un toque (el scroll no cuenta). En cuanto ocurre el
+   primero, encendemos el sonido si el hero sigue en pantalla. */
 let gestoHecho = false;
-function primerGesto(){
+function primerGesto(e){
   if (gestoHecho) return;
   gestoHecho = true;
+  if (e && e.target && e.target.closest && e.target.closest('[data-sonido]')) return;
   const v = document.querySelector('.hero-video');
   if (!v || sonidoOn) return;
   const r = v.getBoundingClientRect();
@@ -382,7 +539,7 @@ function primerGesto(){
   if (visible) alternarSonido();
 }
 ['pointerdown','keydown','touchstart'].forEach(ev =>
-  window.addEventListener(ev, primerGesto, { once:false, passive:true }));
+  window.addEventListener(ev, primerGesto, { passive:true }));
 
 function pintarBotonSonido(){
   const b = document.querySelector('.hero-sound');
@@ -416,7 +573,7 @@ function ajustarFlechas(){
 window.addEventListener('resize', ajustarFlechas);
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-ir],[data-abrir],[data-filtro],[data-plan],[data-meses],[data-metodo],[data-cerrar],[data-confirmar],[data-entrar],[data-mas],[data-menos],[data-repetir],[data-enviar],[data-scroll],[data-sonido],[data-portal]');
+  const t = e.target.closest('[data-ir],[data-filtro],[data-plan],[data-meses],[data-metodo],[data-cerrar],[data-scroll],[data-sonido],[data-portal],[data-enviado]');
   if (!t) return;
   const d = t.dataset;
 
@@ -427,41 +584,31 @@ document.addEventListener('click', e => {
     if (el) el.scrollBy({ left: (+d.dir) * el.clientWidth * 0.85, behavior:'smooth' });
     return;
   }
+  /* El link de WhatsApp sigue su curso; solo marcamos que ya se abrió */
+  if (d.enviado){ S.enviado = true; setTimeout(render, 400); return; }
   if (d.ir)      return ir(d.ir);
-  if (d.cerrar)  return ir(S.volverA === 'catalogo' ? 'catalogo' : 'home');
+  /* Cerrar la ficha vuelve a donde estabas, si viniste de adentro */
+  if (d.cerrar)  return (S.anterior === 'home' || S.anterior === 'catalogo') ? history.back() : ir('catalogo');
   if (d.filtro){ S.filtro = d.filtro; return render(); }
   if (d.plan)  { S.planK  = d.plan;   return render(); }
   if (d.meses) { S.meses  = +d.meses; return render(); }
   if (d.metodo){ S.metodo = d.metodo; return render(); }
-
-  if (d.abrir){
-    const x = CAT.find(s => s.id === d.abrir);
-    S.sid = x.id;
-    S.volverA = S.pantalla;
-    const orden = x.planes.slice().sort((a, b) => a.precio - b.precio);
-    S.planK = (orden.find(pl => stockPlan(x.id, pl.k) > 0) || orden[0]).k;
-    return ir('detalle');
-  }
-  if (d.confirmar){ S.codigo = nuevoCodigo(); return ir('pedido'); }
-  if (d.entrar)   { S.auth = true; return ir('mayorista'); }
-  if (d.mas)      { const x = CAT.find(s => s.id === d.mas);
-                    S.cant[d.mas] = Math.min(stockPlan(x.id, x.planes[0].k), (S.cant[d.mas] || 0) + 1); return render(); }
-  if (d.menos)    { S.cant[d.menos] = Math.max(0, (S.cant[d.menos] || 0) - 1); return render(); }
-  if (d.repetir)  { S.cant = { nx:8, dp:4 }; return render(); }
-  if (d.enviar)   { S.codigo = nuevoCodigo(); return ir('pedido'); }
 });
 
-/* inputs del checkout / login: guardar sin re-renderizar */
-document.addEventListener('input', e => {
-  if (e.target.id === 'fRef')  S.ref  = e.target.value;
-  if (e.target.id === 'fWa')   S.wa   = e.target.value;
-  if (e.target.id === 'fUser') S.user = e.target.value;
+/* Login de revendedor: hasta que haya backend, cualquier usuario entra al
+   panel de demostración. */
+document.addEventListener('submit', e => {
+  if (!e.target.matches('[data-login]')) return;
+  e.preventDefault();
+  try { sessionStorage.setItem('streamve.mayorista', $('#fUser').value.trim()); } catch (err) {}
+  location.href = 'mayorista.html';
 });
 
 /* ── portal de entrada ──
    Se pregunta una sola vez y la elección queda guardada. No es un muro:
    comprar como individual nunca pide registro; el mayorista sí, porque
-   ahí hay precio distinto y mínimo por paquete. */
+   ahí hay precio distinto y mínimo por paquete. Si alguien llega con un
+   link directo (#/netflix), no se le pregunta nada. */
 const CLAVE_MODO = 'streamve.modo';
 
 function leerModo(){
@@ -470,15 +617,18 @@ function leerModo(){
 function elegirModo(modo){
   try { localStorage.setItem(CLAVE_MODO, modo); } catch (e) {}
   $('#portal').hidden = true;
+  document.body.classList.remove('con-portal');
   ir(modo === 'mayorista' ? 'mayorista' : 'home');
 }
 function abrirPortalSiHaceFalta(){
-  if (!leerModo()) $('#portal').hidden = false;
+  const sinRuta = !location.hash || location.hash === '#/' || location.hash === '#';
+  if (!leerModo() && sinRuta){
+    $('#portal').hidden = false;
+    document.body.classList.add('con-portal');
+  }
 }
 
 /* ── cabecera y pie ── */
-const waLink = t => 'https://wa.me/' + CFG.whatsapp + '?text=' + encodeURIComponent(t);
-
 function montarChrome(){
   pintarAtencion();
 
@@ -488,23 +638,16 @@ function montarChrome(){
 
   /* Los servicios del pie salen del catálogo: una sola fuente de verdad */
   $('#pieServicios').innerHTML = CAT.map(x =>
-    `<li><button data-abrir="${x.id}"><b>${esc(x.nombre)}</b><i>desde ${usd(Math.min.apply(null, x.planes.map(pl => pl.precio)))}</i></button></li>`
+    `<li><a href="#/${x.slug}"><b>${esc(x.nombre)}</b><i>desde ${usd(desdeDe(x))}</i></a></li>`
   ).join('');
 }
 
 /* Abierto o cerrado se calcula contra el horario real, no es un adorno:
    si son las 2 de la mañana, la web lo dice en vez de fingir. */
-/* La hora es la de Venezuela, no la del visitante: si alguien abre la
-   web desde España a las 3 de la tarde, acá son las 9 de la mañana. */
-function horaVE(){
-  return +new Intl.DateTimeFormat('en-US',
-    { timeZone:'America/Caracas', hour:'numeric', hour12:false }).format(new Date());
-}
 function pintarAtencion(){
   const el = $('#estAtencion');
   if (!el) return;
-  const h = horaVE();
-  const abierto = h >= CFG.abreHora && h < CFG.cierraHora;
+  const abierto = abiertoAhora();
   el.textContent = abierto ? 'HASTA ' + hora12(CFG.cierraHora) : 'ABRE ' + hora12(CFG.abreHora);
   el.classList.toggle('cerrado', !abierto);
 }
@@ -529,7 +672,7 @@ $('#tabMayor').onclick     = () => ir('mayorista');
 
 montarChrome();
 alDesplazar();
-render();
+aplicarRuta();
+abrirPortalSiHaceFalta();
 /* La portada no muestra bolívares: re-renderizarla reiniciaría el video */
 cargarTasa(() => { if (S.pantalla !== 'home') render(); });
-abrirPortalSiHaceFalta();

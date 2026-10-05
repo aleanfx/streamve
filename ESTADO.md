@@ -60,11 +60,11 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 - Tienda completa: portal consumidor/mayorista, hero con tráiler y sonido, rieles con flechas, tarjetas con descripción en hover, ficha de producto en dos columnas, checkout, pedido, login mayorista con collage.
 - Modelo de datos con reglas verificadas.
 - Panel de operación: Hoy, cuentas madre, suscripciones, clientes, dinero.
+- **Fase 1** (tienda): rutas con `#` (`#/netflix`, `#/netflix/pedido`, `#/catalogo`, `#/revendedores`); "Tu pedido" en tres pasos que termina en WhatsApp con el mensaje armado (vista previa tipo chat, datos de pago con COPIAR, estado abierto/cerrado real); página de revendedores; preguntas frecuentes; hero vertical en el teléfono.
 - **Fase 0** (base): `<!doctype>` + viewport (el móvil se veía achicado), Open Graph con `assets/og.jpg`, tasa BCV automática, un solo stock, precios nuevos y estado "agotado".
 
 ## Pendiente (plan por fases, una por vez)
 
-1. **Fase 1 — Tienda:** checkout + pedido → una pantalla "Tu pedido" que cierra por WhatsApp; rutas con `#`; quitar `vistaPanel()`; revisión móvil pantalla por pantalla
 2. **Fase 2 — Portal del cliente** (`cuenta.html?c=CODIGO`): tarjetas por suscripción, renovar / no me funciona / pedir código (manual, por WhatsApp), código de acceso aleatorio de 10 caracteres
 3. **Fase 3 — Panel del mayorista** (`mayorista.html`): saldo, comprar contra saldo, mis clientes, vencimientos
 4. **Fase 4 — Panel de Ale:** + VENTA, MANDAR ACCESO, recargas por acreditar, tablas → tarjetas en móvil
@@ -84,6 +84,9 @@ Antes de lanzar: poner el WhatsApp y los datos de cobro reales en `CFG` (`ui.js`
 - **Sin `<!doctype html>` + viewport** el navegador entra en modo quirks y el celular dibuja la versión de escritorio achicada. Toda página nueva los lleva
 - La tasa en Bs se lee de `ve.dolarapi.com/v1/dolares/oficial` (BCV). `CFG.tasaBs` es solo el respaldo si la API cae
 - La portada no se re-renderiza al llegar la tasa: reiniciaría el video
+- Navegación: siempre `ir(pantalla)` o un `<a href="#/...">`. `aplicarRuta()` es lo único que cambia `S.pantalla`
+- En `ui.js` no va nada que dependa de `S`: lo usan también el portal y los paneles
+- Capturas del navegador de Claude: en tamaño escritorio solo devuelve un recorte; revisar escritorio midiendo con JS y lo visual en tamaño móvil
 
 ## Assets
 
