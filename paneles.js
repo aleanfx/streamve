@@ -47,6 +47,16 @@ function etiquetarTablas(raiz){
   });
 }
 
+/* Cajón lateral (en el teléfono, hoja desde abajo) para los formularios */
+const cajonHTML = (titulo, cuerpo, pie) => `
+  <div class="cajon-velo" data-cerrar-cajon="1"></div>
+  <aside class="cajon" role="dialog" aria-modal="true" aria-label="${esc(titulo)}">
+    <header class="cajon-cab"><b>${esc(titulo)}</b>
+      <button class="cajon-x" data-cerrar-cajon="1" aria-label="Cerrar">✕</button></header>
+    <div class="cajon-cuerpo">${cuerpo}</div>
+    ${pie ? `<footer class="cajon-pie">${pie}</footer>` : ''}
+  </aside>`;
+
 /* Mensaje de acceso listo para mandar. Sin marca: el revendedor lo manda
    con la suya, y Ale con la de StreamVe (va en el saludo, no acá). */
 function textoAcceso(s){

@@ -3,9 +3,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Panel · StreamVe</title>
-<meta name="robots" content="noindex">
+<meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#141212">
 <link rel="icon" href="assets/favicon.png" sizes="512x512">
+<link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap">
@@ -19,6 +20,7 @@
     </a>
     <span class="pbar-rol">OPERACIÓN</span>
     <span class="hoy" id="pFecha"></span>
+    <button class="acc pri pbar-venta" id="pVenta">+ VENTA</button>
   </div>
 </header>
 
@@ -27,8 +29,10 @@
 </nav>
 
 <main class="pmain" id="pMain"></main>
+<div id="pCajon"></div>
 
 <script src="ui.js"></script>
 <script src="catalogo.js"></script>
 <script src="datos.js"></script>
+<script src="paneles.js"></script>
 <script src="panel.js"></script>

@@ -63,6 +63,7 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 - Tienda completa: portal consumidor/mayorista, hero con tráiler y sonido, rieles con flechas, tarjetas con descripción en hover, ficha de producto en dos columnas, checkout, pedido, login mayorista con collage.
 - Modelo de datos con reglas verificadas.
 - Panel de operación: Hoy, cuentas madre, suscripciones, clientes, dinero.
+- **Fase 4** (panel de Ale): botón **+ VENTA** fijo arriba (cliente nuevo o existente, servicio, plan, meses, cobro) que termina en **MANDAR ACCESO** (vista previa del mensaje con credenciales + link del portal); ENTREGAR y REPONER también abren MANDAR ACCESO; recargas por acreditar en Hoy; "Cobrada · renovar" en lo que vence; **+ CUENTA MADRE** con costo por perfil y margen en vivo; avisos propios en vez de `alert()`. En Hoy solo cuentan los clientes directos: las unidades de revendedores las avisa cada revendedor.
 - **Fase 3** (revendedor): saldo arriba con RECARGAR (montos, datos de pago, aviso por WhatsApp → queda "por acreditar"), RESUMEN con lo que vence en la semana, COMPRAR con mínimo 10 u. contra saldo y asignación inmediata, MIS CLIENTES (asignar unidad a un cliente, enviar acceso, avisar, renovar con saldo), MOVIMIENTOS. Mensajes al cliente final sin la marca StreamVe. En el teléfono las tablas se vuelven tarjetas.
 - **Fase 2** (portal del cliente): una tarjeta por acceso con días restantes en grande y 30 marcas de tiempo, credenciales con VER/COPIAR, RENOVAR (1 o 12 meses), PEDIR CÓDIGO (solo video), NO ME FUNCIONA con 4 causas (abre incidencia + WhatsApp), historial y reglas de uso. Códigos de 10 caracteres sin ambiguos. `datos.js` ya trae las reglas de venta, renovación, mayorista y recargas (`registrarVenta`, `renovar`, `comprarMayorista`, `solicitarRecarga`, `acreditarRecarga`, `asignarACliente`, `entregarPedido`).
 - **Fase 1** (tienda): rutas con `#` (`#/netflix`, `#/netflix/pedido`, `#/catalogo`, `#/revendedores`); "Tu pedido" en tres pasos que termina en WhatsApp con el mensaje armado (vista previa tipo chat, datos de pago con COPIAR, estado abierto/cerrado real); página de revendedores; preguntas frecuentes; hero vertical en el teléfono.
@@ -70,7 +71,6 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 
 ## Pendiente (plan por fases, una por vez)
 
-4. **Fase 4 — Panel de Ale:** + VENTA, MANDAR ACCESO, recargas por acreditar, tablas → tarjetas en móvil
 5. **Fase 5 — Backend** (Supabase) con `db.js` que llena `DB` con la misma forma
 6. Más adelante: recordatorios con la API de WhatsApp (~$0,011 por aviso)
 

@@ -12,7 +12,9 @@ const C = { ver: {}, falla: null, reportado: {} };
 
 const codigoURL = () => (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
 const primerNombre = n => String(n).split(' ')[0];
-const fechaLarga = f => aFecha(f).toLocaleDateString('es-VE', { day:'numeric', month:'long' });
+const fechaLarga = f => { const d = aFecha(f);
+  return d.toLocaleDateString('es-VE', d.getFullYear() !== HOY.getFullYear()
+    ? { day:'numeric', month:'long', year:'numeric' } : { day:'numeric', month:'long' }); };
 
 const ETQ = { activa:'ACTIVA', porVencer:'POR VENCER', vencida:'VENCIDA', cancelada:'CANCELADA' };
 

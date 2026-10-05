@@ -43,7 +43,12 @@ const diasEntre = (a, b) => Math.round((aFecha(b) - aFecha(a)) / 86400000);
 
 /* "5 oct": armado a mano para que se lea igual en cualquier navegador */
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-const fechaCorta = f => { const d = aFecha(f); return d.getDate() + ' ' + MESES[d.getMonth()]; };
+/* El año solo aparece si no es el actual: "30 sep 2027" no se confunde
+   con una fecha que ya pasó. */
+const fechaCorta = f => {
+  const d = aFecha(f);
+  return d.getDate() + ' ' + MESES[d.getMonth()] + (d.getFullYear() !== HOY.getFullYear() ? ' ' + d.getFullYear() : '');
+};
 
 /* "en 3 días", "hoy", "hace 2 días" — lo que se lee de un vistazo */
 function comoFalta(fecha){
@@ -368,6 +373,37 @@ function asignarACliente(suscripcionId, nombre, whatsapp){
   }
   s.asignadoA = cf.id;
   return { ok: true, clienteFinal: cf };
+}
+
+/* Capacidad típica por servicio, para precargar el formulario */
+const CAPACIDAD_TIPICA = { nx:4, dp:4, mx:3, pv:3, sp:6, cr:4, pp:4 };
+
+/* Ale compró una cuenta nueva al proveedor: entra con sus perfiles libres */
+function agregarCuentaMadre({ servicioId, correo, clave, capacidad, costo, proveedor, vence }){
+  capacidad = Math.round(+capacidad); costo = +costo;
+  if (!CAT.find(c => c.id === servicioId)) return { ok: false, motivo: 'Elegí el servicio' };
+  if (!correo || !String(correo).includes('@')) return { ok: false, motivo: 'El correo no parece válido' };
+  if (!clave) return { ok: false, motivo: 'Falta la clave' };
+  if (!(capacidad >= 1 && capacidad <= 8)) return { ok: false, motivo: 'La capacidad va de 1 a 8 perfiles' };
+  if (!(costo > 0)) return { ok: false, motivo: 'Falta el costo' };
+  const m = {
+    id: 'cm-' + (DB.cuentasMadre.length + 1), servicioId, capacidad, costo,
+    proveedor: (proveedor || 'Sin proveedor').trim(), correo: String(correo).trim(), clave: String(clave).trim(),
+    comprada: dia(HOY), vence: vence ? dia(vence) : dia(masDias(HOY, OP.diasPorMes)), notas: ''
+  };
+  DB.cuentasMadre.push(m);
+  for (let n = 1; n <= capacidad; n++)
+    DB.perfiles.push({ id: m.id + '-p' + n, cuentaMadreId: m.id, nombre: 'Perfil ' + n,
+                       pin: String(1000 + Math.floor(Math.random() * 9000)), estado: 'libre' });
+  return { ok: true, madre: m };
+}
+
+/* Renovar la cuenta madre con el proveedor: 30 días más desde su vence */
+function renovarMadre(madreId){
+  const m = DB.cuentasMadre.find(x => x.id === madreId);
+  if (!m) return { ok: false, motivo: 'La cuenta madre no existe' };
+  m.vence = dia(masDias(aFecha(m.vence) > HOY ? m.vence : HOY, OP.diasPorMes));
+  return { ok: true, vence: m.vence };
 }
 
 /* Regla 8 — cuenta madre que muere antes que sus clientes: alerta roja */
