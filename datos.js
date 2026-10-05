@@ -323,6 +323,20 @@ function comprarMayorista(clienteId, items){
   return { ok: true, suscripciones: hechas, pedido, monto };
 }
 
+/* El mayorista renueva una unidad suya pagando con saldo */
+function renovarConSaldo(suscripcionId, meses){
+  const s = DB.suscripciones.find(x => x.id === suscripcionId);
+  if (!s) return { ok: false, motivo: 'La unidad no existe' };
+  const sv = servicioDeSuscripcion(s);
+  const precio = precioVenta(planDe(sv.id, s.planClave), meses || 1, true);
+  if (saldoDe(s.clienteId) < precio) return { ok: false, motivo: 'Saldo insuficiente: te faltan ' + usd(precio - saldoDe(s.clienteId)) };
+  const r = renovar(suscripcionId, meses);
+  if (!r.ok) return r;
+  DB.movimientos.push({ id: 'mv-' + (DB.movimientos.length + 1), clienteId: s.clienteId, tipo: 'consumo',
+    monto: precio, fecha: dia(HOY), referencia: 'Renovación ' + sv.nombre, estado: 'ok' });
+  return r;
+}
+
 function solicitarRecarga(clienteId, monto, metodo){
   monto = +monto;
   if (!(monto > 0)) return { ok: false, motivo: 'El monto tiene que ser mayor a cero' };
