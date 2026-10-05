@@ -5,10 +5,7 @@
    los días. Densidad alta, cero adorno, y el estado se ve antes de leerse. */
 
 :root{
-  --vive:#5fbf7a;      /* semánticos, separados del acento de marca */
-  --avisa:#e0a92e;
-  --muere:#e05a45;
-  --panel-h:56px;
+  --panel-h:56px;     /* los semánticos --vive/--avisa/--muere están en estilo.css */
 }
 
 body.panel{background:#141212;overflow-x:visible}

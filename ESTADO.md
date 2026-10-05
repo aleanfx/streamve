@@ -21,6 +21,7 @@ Tienda de accesos a plataformas de streaming para Venezuela, con dos públicos: 
 | `tienda.js` | estado y vistas de la tienda |
 | `datos.js` | **modelo de datos, las 8 reglas de negocio y datos simulados** |
 | `panel.html/.css/.js` | panel de operación (admin) |
+| `cuenta.html/.css/.js` | portal del cliente: `cuenta.html?c=CODIGO` |
 | `pruebas.js` | verificación de reglas: `node pruebas.js` |
 | `docs/` | brief de diseño, naming, prompts de imágenes |
 
@@ -60,12 +61,12 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 - Tienda completa: portal consumidor/mayorista, hero con tráiler y sonido, rieles con flechas, tarjetas con descripción en hover, ficha de producto en dos columnas, checkout, pedido, login mayorista con collage.
 - Modelo de datos con reglas verificadas.
 - Panel de operación: Hoy, cuentas madre, suscripciones, clientes, dinero.
+- **Fase 2** (portal del cliente): una tarjeta por acceso con días restantes en grande y 30 marcas de tiempo, credenciales con VER/COPIAR, RENOVAR (1 o 12 meses), PEDIR CÓDIGO (solo video), NO ME FUNCIONA con 4 causas (abre incidencia + WhatsApp), historial y reglas de uso. Códigos de 10 caracteres sin ambiguos. `datos.js` ya trae las reglas de venta, renovación, mayorista y recargas (`registrarVenta`, `renovar`, `comprarMayorista`, `solicitarRecarga`, `acreditarRecarga`, `asignarACliente`, `entregarPedido`).
 - **Fase 1** (tienda): rutas con `#` (`#/netflix`, `#/netflix/pedido`, `#/catalogo`, `#/revendedores`); "Tu pedido" en tres pasos que termina en WhatsApp con el mensaje armado (vista previa tipo chat, datos de pago con COPIAR, estado abierto/cerrado real); página de revendedores; preguntas frecuentes; hero vertical en el teléfono.
 - **Fase 0** (base): `<!doctype>` + viewport (el móvil se veía achicado), Open Graph con `assets/og.jpg`, tasa BCV automática, un solo stock, precios nuevos y estado "agotado".
 
 ## Pendiente (plan por fases, una por vez)
 
-2. **Fase 2 — Portal del cliente** (`cuenta.html?c=CODIGO`): tarjetas por suscripción, renovar / no me funciona / pedir código (manual, por WhatsApp), código de acceso aleatorio de 10 caracteres
 3. **Fase 3 — Panel del mayorista** (`mayorista.html`): saldo, comprar contra saldo, mis clientes, vencimientos
 4. **Fase 4 — Panel de Ale:** + VENTA, MANDAR ACCESO, recargas por acreditar, tablas → tarjetas en móvil
 5. **Fase 5 — Backend** (Supabase) con `db.js` que llena `DB` con la misma forma
@@ -79,6 +80,8 @@ Antes de lanzar: poner el WhatsApp y los datos de cobro reales en `CFG` (`ui.js`
 - El scroll (`wheel`) **no** cuenta como gesto: el audio solo se habilita con clic, tecla o toque
 - Una regla de clase le gana a `[hidden]` → está declarado `[hidden]{display:none!important}`
 - `toISOString()` convierte a UTC: en UTC-4 la medianoche cae el día anterior → `dia()` usa partes locales
+- `new Date('2026-10-05')` también es UTC → toda fecha de texto pasa por `aFecha()`
+- El servidor local cachea los .js: tras cambiar `datos.js`, recargar con `fetch(f, {cache:'reload'})` o el navegador sigue con el viejo
 - El campo `card` solo se declara si el archivo existe; si no, el tile sale negro
 - El navegador de pruebas de Claude no decodifica video: verificar el hero con ffmpeg. Si la captura se cuelga, pausar el video por JS
 - **Sin `<!doctype html>` + viewport** el navegador entra en modo quirks y el celular dibuja la versión de escritorio achicada. Toda página nueva los lleva

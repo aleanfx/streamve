@@ -28,6 +28,11 @@
     --r-card:6px;
     --barh:60px;
     --ok:#5fbf7a;
+    /* Semánticos de estado, separados del acento de marca: verde vive,
+       ámbar por vencer, rojo vencida. Los usan el portal y los paneles. */
+    --vive:#5fbf7a;
+    --avisa:#e0a92e;
+    --muere:#e05a45;
   }
 
   *{box-sizing:border-box}

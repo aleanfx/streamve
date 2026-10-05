@@ -57,4 +57,51 @@ console.log('\n── precios y stock ──');
 R('ningún plan se vende a pérdida', ctx.PERDIDA.length===0, ctx.PERDIDA);
 R('la tienda y el panel leen el mismo stock', ctx.STOCK2.every(s=>s.tienda===s.panel), ctx.STOCK2);
 R('el monto en Bs usa la tasa BCV', vm.runInContext(`bs(1) === 'Bs ' + dec2(CFG.tasaBs)`, ctx));
+
+/* ── reglas del portal, las ventas y el mayorista ── */
+vm.runInContext(`
+  globalThis.N = {};
+  const viva = DB.suscripciones.find(s => estadoSuscripcion(s) === 'activa' && servicioDeSuscripcion(s).id === 'nx');
+  const antes = viva.vence;
+  N.renov = renovar(viva.id, 1);
+  N.renovSuma = diasEntre(antes, viva.vence) === OP.diasPorMes;
+
+  const otra = DB.suscripciones.find(s => s !== viva && estadoSuscripcion(s) === 'activa' && stockDisponible(servicioDeSuscripcion(s).id) > 0);
+  const n0 = incidenciasAbiertas().length;
+  abrirIncidencia(otra.id, 'No me deja entrar'); abrirIncidencia(otra.id, 'No me deja entrar');
+  N.unaSola = incidenciasAbiertas().length === n0 + 1;
+  reponer(otra.id);
+  N.cierra = incidenciasAbiertas().length === n0;
+
+  const may = DB.clientes.find(c => c.tipo === 'mayorista');
+  N.bajoMinimo = comprarMayorista(may.id, [{ servicioId:'nx', cantidad: 3 }]).ok === false;
+  const saldo0 = saldoDe(may.id);
+  solicitarRecarga(may.id, 100, 'pm');
+  N.pendienteNoCuenta = saldoDe(may.id) === saldo0;
+  const pend = recargasPendientes().find(m => m.clienteId === may.id && m.monto === 100);
+  acreditarRecarga(pend.id);
+  N.acreditada = Math.abs(saldoDe(may.id) - (saldo0 + 100)) < 0.001;
+  const s1 = saldoDe(may.id);
+  const compra = comprarMayorista(may.id, [{ servicioId:'nx', cantidad: 6 }, { servicioId:'sp', cantidad: 4 }]);
+  N.compra = compra.ok && compra.suscripciones.length === 10 && Math.abs(saldoDe(may.id) - (s1 - compra.monto)) < 0.001;
+  N.saldoNoNegativo = comprarMayorista(may.id, [{ servicioId:'nx', cantidad: 10 }]).ok === false || saldoDe(may.id) >= 0;
+
+  const v = registrarVenta({ nombre:'Cliente Prueba', whatsapp:'0414-555 1234', servicioId:'dp', planClave:'pantalla', meses:12 });
+  N.venta = v.ok && v.cliente.whatsapp === '584145551234' && Math.abs(v.suscripcion.precio - 5 * 12 * 0.85) < 0.001
+            && diasRestantes(v.suscripcion) === 360;
+  const cods = DB.clientes.map(c => c.codigoAcceso);
+  N.codigos = cods.every(c => /^[A-Z2-9]{10}$/.test(c)) && new Set(cods).size === cods.length;
+`, ctx);
+const N = ctx.N;
+console.log('\n── portal, ventas y mayorista ──');
+R('renovar suma 30 días al vencimiento', N.renov.ok && N.renovSuma);
+R('reportar dos veces abre una sola incidencia', N.unaSola);
+R('reponer cierra la incidencia abierta', N.cierra);
+R('el mayorista no compra bajo el mínimo', N.bajoMinimo);
+R('una recarga pendiente no suma saldo', N.pendienteNoCuenta);
+R('acreditar la recarga sí la suma', N.acreditada);
+R('la compra con saldo crea las unidades y descuenta', N.compra);
+R('el saldo nunca queda negativo', N.saldoNoNegativo);
+R('venta directa: cliente nuevo, 12 meses con descuento', N.venta);
+R('códigos de portal de 10 caracteres y únicos', N.codigos);
 console.log(fallos? '\n'+fallos+' fallo(s)' : '\nTodo OK');
