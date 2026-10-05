@@ -25,7 +25,8 @@ Tienda de accesos a plataformas de streaming para Venezuela, con dos públicos: 
 | `mayorista.html/.js` | panel del revendedor (usa `panel.css` y `paneles.js`) |
 | `paneles.js` | piezas comunes de los dos paneles: barras, estados, tablas → tarjetas en móvil |
 | `pruebas.js` | verificación de reglas: `node pruebas.js` |
-| `docs/` | brief de diseño, naming, prompts de imágenes |
+| `docs/` | brief de diseño, naming, prompts de imágenes, **`backend.md`** (cómo conectar Supabase) |
+| `supabase/esquema.sql` | la base completa: tablas, reglas como funciones, seguridad por fila. **Escrito, no ejecutado todavía** |
 
 Carga: `ui.js` → `catalogo.js` → `datos.js` → vista (la tienda también carga `datos.js`). Las vistas **no calculan**: consultan `datos.js`. El stock que ve el público es `stockDisponible()` / `stockPlan()`, el mismo del panel.
 
@@ -50,6 +51,7 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 6. Mayorista: saldo nunca negativo, mínimo 10 u.
 7. Margen real = precio − (costo cuenta madre ÷ capacidad)
 8. Cuenta madre que vence antes que sus clientes = alerta roja
+9. Vencida hace más de 3 días sin renovar → se **libera**: el perfil vuelve al stock (cambiarle el PIN antes de revenderlo)
 
 ## Decisiones de diseño
 
@@ -63,6 +65,8 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 - Tienda completa: portal consumidor/mayorista, hero con tráiler y sonido, rieles con flechas, tarjetas con descripción en hover, ficha de producto en dos columnas, checkout, pedido, login mayorista con collage.
 - Modelo de datos con reglas verificadas.
 - Panel de operación: Hoy, cuentas madre, suscripciones, clientes, dinero.
+- **Fase 5 preparada**: `supabase/esquema.sql` + `docs/backend.md`. Falta que Ale cree la cuenta (Claude no puede crear cuentas) y pase la *Project URL* y la clave *anon*. Nunca la `service_role`.
+- Bloque **Vencidas sin renovar** en Hoy con LIBERAR (regla 9).
 - **Fase 4** (panel de Ale): botón **+ VENTA** fijo arriba (cliente nuevo o existente, servicio, plan, meses, cobro) que termina en **MANDAR ACCESO** (vista previa del mensaje con credenciales + link del portal); ENTREGAR y REPONER también abren MANDAR ACCESO; recargas por acreditar en Hoy; "Cobrada · renovar" en lo que vence; **+ CUENTA MADRE** con costo por perfil y margen en vivo; avisos propios en vez de `alert()`. En Hoy solo cuentan los clientes directos: las unidades de revendedores las avisa cada revendedor.
 - **Fase 3** (revendedor): saldo arriba con RECARGAR (montos, datos de pago, aviso por WhatsApp → queda "por acreditar"), RESUMEN con lo que vence en la semana, COMPRAR con mínimo 10 u. contra saldo y asignación inmediata, MIS CLIENTES (asignar unidad a un cliente, enviar acceso, avisar, renovar con saldo), MOVIMIENTOS. Mensajes al cliente final sin la marca StreamVe. En el teléfono las tablas se vuelven tarjetas.
 - **Fase 2** (portal del cliente): una tarjeta por acceso con días restantes en grande y 30 marcas de tiempo, credenciales con VER/COPIAR, RENOVAR (1 o 12 meses), PEDIR CÓDIGO (solo video), NO ME FUNCIONA con 4 causas (abre incidencia + WhatsApp), historial y reglas de uso. Códigos de 10 caracteres sin ambiguos. `datos.js` ya trae las reglas de venta, renovación, mayorista y recargas (`registrarVenta`, `renovar`, `comprarMayorista`, `solicitarRecarga`, `acreditarRecarga`, `asignarACliente`, `entregarPedido`).
@@ -71,7 +75,7 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 
 ## Pendiente (plan por fases, una por vez)
 
-5. **Fase 5 — Backend** (Supabase) con `db.js` que llena `DB` con la misma forma
+5. **Fase 5 — Backend**: Ale sigue `docs/backend.md` (10 min) y pasa URL + clave anon → Claude escribe `db.js` (llena `DB` con la misma forma), login de admin y revendedor, y conecta tienda/portal a las funciones de la base
 6. Más adelante: recordatorios con la API de WhatsApp (~$0,011 por aviso)
 
 Antes de lanzar: poner el WhatsApp y los datos de cobro reales en `CFG` (`ui.js`). Hoy son de relleno.

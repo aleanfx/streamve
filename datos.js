@@ -15,7 +15,8 @@
 const OP = {
   avisarDiasAntes: 3,      // cuándo una suscripción pasa a "por vencer"
   diasPorMes:      30,
-  minMayorista:    10
+  minMayorista:    10,
+  graciaDias:      3       // vencida hace más que esto sin renovar: el perfil vuelve al stock
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -373,6 +374,24 @@ function asignarACliente(suscripcionId, nombre, whatsapp){
   }
   s.asignadoA = cf.id;
   return { ok: true, clienteFinal: cf };
+}
+
+/* El cliente no renovó: pasados los días de gracia, la pantalla vuelve al
+   stock y la suscripción se cierra. Antes de revenderla hay que cambiarle
+   el PIN al perfil, porque el cliente anterior lo conoce. */
+const paraLiberar = () => DB.suscripciones
+  .filter(s => s.estado !== 'cancelada' && diasRestantes(s) < -OP.graciaDias)
+  .sort((a, b) => aFecha(a.vence) - aFecha(b.vence));
+
+function liberar(suscripcionId){
+  const s = DB.suscripciones.find(x => x.id === suscripcionId);
+  if (!s) return { ok: false, motivo: 'La suscripción no existe' };
+  if (diasRestantes(s) >= 0) return { ok: false, motivo: 'Todavía no venció' };
+  const perfiles = (s.perfilIds || [s.perfilId]).map(id => DB.perfiles.find(p => p.id === id))
+    .filter(p => p && p.estado === 'asignado');
+  perfiles.forEach(p => { p.estado = 'libre'; });
+  s.estado = 'cancelada';
+  return { ok: true, perfiles };
 }
 
 /* Capacidad típica por servicio, para precargar el formulario */

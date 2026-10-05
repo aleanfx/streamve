@@ -53,6 +53,7 @@ function vistaHoy(){
   const rec    = recargasPendientes();
   const riesgo = madresEnRiesgo();
   const sinRepuesto = CAT.filter(x => stockDisponible(x.id) === 0);
+  const liberar_ = paraLiberar();
 
   return `
   <div class="alertas">
@@ -149,6 +150,28 @@ function vistaHoy(){
       </tr>`).join('')}</tbody></table></div>`
       : vacio('Nada por acreditar')}
   </div>
+
+  ${liberar_.length ? `
+  <div class="bloque" id="liberar">
+    <div class="bloque-tit"><h2>Vencidas sin renovar</h2><span>${liberar_.length} hace más de ${OP.graciaDias} días</span>
+      <span class="der">al liberar, cambiale el PIN al perfil antes de revenderlo</span></div>
+    <div class="tabla-cont"><table class="t">
+      <thead><tr><th>Cliente</th><th>Servicio</th><th>Venció</th><th>PIN a cambiar</th><th></th></tr></thead>
+      <tbody>${liberar_.map(s => {
+        const sv = servicioDeSuscripcion(s) || servPorId('');
+        const a = accesoDe(s) || {};
+        return `<tr>
+          <td><span class="prin">${esc(nombreCliente(s.clienteId))}</span></td>
+          <td>${punto(sv.id)}${esc(sv.nombre)}<div class="sub">${esc(a.correo || '')}</div></td>
+          <td class="num sub">${esc(comoFalta(s.vence))}</td>
+          <td class="num">${esc(a.perfil || '')}${a.pin ? ' · ' + esc(a.pin) : ''}</td>
+          <td class="acciones">
+            <a class="acc" target="_blank" rel="noopener" href="${waCliente(s.clienteId, mensajeAviso(s))}">ÚLTIMO AVISO</a>
+            <button class="acc pri" data-liberar="${s.id}">LIBERAR</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody></table></div>
+  </div>` : ''}
 
   <div class="bloque" id="vencen">
     <div class="bloque-tit"><h2>Vence esta semana</h2><span>${semana.length} suscripciones</span>
@@ -471,7 +494,7 @@ function pintar(){
 const repintar = () => { pintar(); if (P.cajon) pintarCajon(); };
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-ir],[data-ver],[data-filtro],[data-reponer],[data-entregar],[data-renovar],[data-renovar-madre],[data-acreditar],[data-acceso],[data-cajon],[data-cerrar-cajon],[data-v-modo],[data-v-cliente],[data-v-sid],[data-v-plan],[data-v-meses],[data-v-metodo],[data-registrar],[data-m-sid],[data-guardar-madre]');
+  const t = e.target.closest('[data-liberar],[data-ir],[data-ver],[data-filtro],[data-reponer],[data-entregar],[data-renovar],[data-renovar-madre],[data-acreditar],[data-acceso],[data-cajon],[data-cerrar-cajon],[data-v-modo],[data-v-cliente],[data-v-sid],[data-v-plan],[data-v-meses],[data-v-metodo],[data-registrar],[data-m-sid],[data-guardar-madre]');
   if (!t) return;
   const d = t.dataset;
 
@@ -509,6 +532,12 @@ document.addEventListener('click', e => {
     const r = acreditarRecarga(d.acreditar);
     if (!r.ok) return aviso(r.motivo, 'error');
     aviso(usd(r.movimiento.monto) + ' acreditados a ' + nombreCliente(r.movimiento.clienteId));
+    return repintar();
+  }
+  if (d.liberar){
+    const r = liberar(d.liberar);
+    if (!r.ok) return aviso(r.motivo, 'error');
+    aviso(r.perfiles.length + (r.perfiles.length === 1 ? ' perfil volvió' : ' perfiles volvieron') + ' al stock. Cambiale el PIN.');
     return repintar();
   }
   if (d.acceso) return abrirCajon({ tipo:'acceso', sid:d.acceso });

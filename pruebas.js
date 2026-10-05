@@ -104,4 +104,20 @@ R('la compra con saldo crea las unidades y descuenta', N.compra);
 R('el saldo nunca queda negativo', N.saldoNoNegativo);
 R('venta directa: cliente nuevo, 12 meses con descuento', N.venta);
 R('códigos de portal de 10 caracteres y únicos', N.codigos);
+
+vm.runInContext(`
+  globalThis.L = {};
+  const vieja = paraLiberar()[0];
+  const sv = servicioDeSuscripcion(vieja).id;
+  const st0 = stockDisponible(sv);
+  L.r = liberar(vieja.id);
+  L.vuelve = stockDisponible(sv) === st0 + L.r.perfiles.length && L.r.perfiles.length > 0;
+  L.cerrada = vieja.estado === 'cancelada' && !paraLiberar().includes(vieja);
+  const vigente = DB.suscripciones.find(s => estadoSuscripcion(s) === 'activa');
+  L.noViva = liberar(vigente.id).ok === false;
+`, ctx);
+console.log('\n── liberar vencidas ──');
+R('liberar devuelve la pantalla al stock', ctx.L.vuelve);
+R('la suscripción liberada queda cerrada', ctx.L.cerrada);
+R('una suscripción vigente no se libera', ctx.L.noViva);
 console.log(fallos? '\n'+fallos+' fallo(s)' : '\nTodo OK');
