@@ -35,4 +35,26 @@ vm.runInContext(`
   }).id,'prueba') };
 `, ctx);
 R('sin stock, la reposición se rechaza con motivo', ctx.E.sinStock.ok===false && !!ctx.E.sinStock.motivo, ctx.E.sinStock);
+
+/* Ningún precio vende a pérdida: se compara contra la cuenta madre más
+   cara de ese servicio, que es el peor caso. */
+vm.runInContext(`
+  globalThis.PERDIDA = [];
+  CAT.forEach(x => {
+    const madres = DB.cuentasMadre.filter(m => m.servicioId === x.id);
+    if (!madres.length) return;
+    const porUnidad = Math.max.apply(null, madres.map(m => m.costo / m.capacidad));
+    const entera    = Math.max.apply(null, madres.map(m => m.costo));
+    x.planes.forEach(p => {
+      const costo = p.k === 'completa' ? entera : porUnidad;
+      if (p.precio <= costo) PERDIDA.push(x.id + ' ' + p.k + ' público');
+      if (p.precioMayorista != null && p.precioMayorista <= costo) PERDIDA.push(x.id + ' ' + p.k + ' mayorista');
+    });
+  });
+  globalThis.STOCK2 = CAT.map(x => ({ id:x.id, tienda:stockDe(x), panel:stockDisponible(x.id) }));
+`, ctx);
+console.log('\n── precios y stock ──');
+R('ningún plan se vende a pérdida', ctx.PERDIDA.length===0, ctx.PERDIDA);
+R('la tienda y el panel leen el mismo stock', ctx.STOCK2.every(s=>s.tienda===s.panel), ctx.STOCK2);
+R('el monto en Bs usa la tasa BCV', vm.runInContext(`bs(1) === 'Bs ' + dec2(CFG.tasaBs)`, ctx));
 console.log(fallos? '\n'+fallos+' fallo(s)' : '\nTodo OK');

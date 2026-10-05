@@ -43,12 +43,13 @@ function artHTML(x, i, veil){
 
 function tileHTML(x, i){
   const st = stockDe(x), bajo = st <= 5;
+  const badge = st === 0 ? 'AGOTADO' : bajo ? 'QUEDAN ' + st : st + ' LIBRES';
   const desde = usd(Math.min.apply(null, x.planes.map(p => p.precio)));
   const micro = CFG.garantiaDias + 'd · ' + CFG.ventanaEntrega + ' · ' + (x.renovable ? 'renovable' : 'no renovable');
   return `<button class="tile rise" style="animation-delay:${Math.min(i, 7) * 45}ms" data-abrir="${x.id}">
     <div class="art">
       ${artHTML(x, i)}
-      <span class="art-badge" style="background:${bajo ? 'var(--accent)' : 'rgba(0,0,0,.45)'};color:${bajo ? 'var(--ink)' : 'var(--mute-2)'}">${bajo ? 'QUEDAN ' + st : st + ' LIBRES'}</span>
+      <span class="art-badge${st === 0 ? ' agotado' : bajo ? ' bajo' : ''}">${badge}</span>
     </div>
     <div class="tile-foot">
       <div class="tile-name">${esc(x.nombre)}</div>
@@ -137,7 +138,7 @@ function vistaCatalogo(){
 /* Qué te llevás con cada plan, en una línea */
 const PLAN_DESC = {
   pantalla:'Una pantalla con tu propio perfil y PIN.',
-  perfil:'Un perfil dentro de una cuenta compartida.',
+  individual:'Una cuenta Premium solo para vos.',
   completa:'La cuenta entera. Vos controlás la clave y los perfiles.'
 };
 
@@ -145,6 +146,7 @@ function vistaDetalle(){
   const x = svc(), p = plan();
   const t = totalActual();
   const arte = x.card || '';
+  const stP = stockPlan(x.id, p.k);
   const ahorro = plan().precio * 12 * CFG.descuentoAnual;
 
   return `
@@ -164,21 +166,21 @@ function vistaDetalle(){
         <div><small>GARANTÍA</small><b>${CFG.garantiaDias} días</b></div>
         <div><small>ENTREGA</small><b>${esc(CFG.ventanaEntrega)}</b></div>
         <div><small>RENOVABLE</small><b class="${x.renovable ? '' : 'no'}">${x.renovable ? 'Sí' : 'No'}</b></div>
-        <div><small>QUEDAN</small><b class="${p.stock <= 5 ? 'poco' : ''}">${p.stock} u.</b></div>
+        <div><small>QUEDAN</small><b class="${stP <= 5 ? 'poco' : ''}">${stP ? stP + ' u.' : 'Agotado'}</b></div>
       </div>
 
       <h3 class="ficha-tit">ELEGÍ TU ACCESO</h3>
       <div class="planes">
-        ${x.planes.map(pl => `
-          <button class="plan" data-plan="${pl.k}" aria-pressed="${pl.k === p.k}">
+        ${x.planes.map(pl => { const st = stockPlan(x.id, pl.k); return `
+          <button class="plan${st ? '' : ' sin'}" data-plan="${pl.k}" aria-pressed="${pl.k === p.k}">
             <span class="plan-marca"></span>
             <span class="plan-txt">
               <b>${esc(pl.etq)}</b>
               <em>${esc(PLAN_DESC[pl.k] || '')}</em>
-              <i>${pl.stock <= 5 ? 'Quedan ' + pl.stock : pl.stock + ' disponibles'}</i>
+              <i>${st === 0 ? 'Agotado por ahora' : st <= 5 ? 'Quedan ' + st : st + ' disponibles'}</i>
             </span>
             <span class="plan-precio">${usd(pl.precio)}<small>/mes</small></span>
-          </button>`).join('')}
+          </button>`; }).join('')}
       </div>
 
       <h3 class="ficha-tit">POR CUÁNTO TIEMPO</h3>
@@ -197,9 +199,12 @@ function vistaDetalle(){
   <div class="paybar">
     <div>
       <div class="amt">${usd(t)}</div>
-      ${CFG.mostrarBolivares ? `<small>${bs(t)} · ${S.meses === 12 ? '12 meses' : '1 mes'}</small>` : ''}
+      ${CFG.mostrarBolivares ? `<small>${bs(t)} · ${S.meses === 12 ? '12 meses' : '1 mes'} · tasa BCV ${tasaTxt()}</small>` : ''}
     </div>
-    <button class="btn btn-primary" data-ir="checkout" style="padding:15px 22px;font-size:15px">COMPRAR</button>
+    ${stP
+      ? `<button class="btn btn-primary" data-ir="checkout" style="padding:15px 22px;font-size:15px">COMPRAR</button>`
+      : `<a class="btn btn-line" style="text-decoration:none;padding:15px 22px;font-size:15px" target="_blank" rel="noopener"
+           href="${waLink('Hola, ¿cuándo vuelven a tener ' + x.nombre + ' (' + p.etq + ')?')}">AVISARME CUANDO HAYA</a>`}
   </div>`;
 }
 
@@ -223,6 +228,7 @@ function vistaCheckout(){
     <div><span class="mute">${bin ? 'Correo' : 'Banco'}</span><b>${esc(bin ? CFG.binanceCorreo : CFG.pmBanco)}</b></div>
     <div><span class="mute">${bin ? 'Red' : 'Teléfono'}</span><b>${esc(bin ? CFG.binanceRed : CFG.pmTelefono)}</b></div>
     <div><span class="mute">Monto exacto</span><b class="amt-red">${bin ? usd(t) + ' USDT' : bs(t)}</b></div>
+    ${bin ? '' : `<div><span class="mute">Tasa BCV del día</span><b>${tasaTxt()} Bs/$</b></div>`}
   </div>
   <div class="fields">
     <input id="fRef" placeholder="Referencia" value="${esc(S.ref)}">
@@ -276,10 +282,10 @@ function vistaLogin(){
 
 function vistaPanel(){
   const filas = CAT.map(x => {
-    const c = S.cant[x.id] || 0, st = x.planes[0].stock, bajo = st <= 5;
+    const c = S.cant[x.id] || 0, st = stockPlan(x.id, x.planes[0].k), bajo = st <= 5;
     return `<div class="wrow">
       <div class="nm"><b>${esc(x.nombre)}</b><small>${esc(x.planes[0].etq)} · ${st} en stock</small></div>
-      <div class="pr" style="color:${bajo ? 'var(--accent-400)' : 'var(--ink)'}">${usd(x.mayor)}</div>
+      <div class="pr" style="color:${bajo ? 'var(--accent-400)' : 'var(--ink)'}">${usd(x.planes[0].precioMayorista)}</div>
       <div class="step">
         <button class="minus" data-menos="${x.id}" aria-label="Quitar uno">−</button>
         <span style="color:${c > 0 ? 'var(--accent-400)' : 'var(--mute)'}">${c}</span>
@@ -289,7 +295,7 @@ function vistaPanel(){
   }).join('');
 
   const unidades = CAT.reduce((a, x) => a + (S.cant[x.id] || 0), 0);
-  const monto = CAT.reduce((a, x) => a + (S.cant[x.id] || 0) * x.mayor, 0);
+  const monto = CAT.reduce((a, x) => a + (S.cant[x.id] || 0) * x.planes[0].precioMayorista, 0);
   const nota = unidades === 0 ? 'Suma cantidades'
              : unidades < CFG.minMayorista ? 'Faltan ' + (CFG.minMayorista - unidades) + ' u.'
              : 'Listo para enviar';
@@ -432,13 +438,14 @@ document.addEventListener('click', e => {
     const x = CAT.find(s => s.id === d.abrir);
     S.sid = x.id;
     S.volverA = S.pantalla;
-    S.planK = x.planes.slice().sort((a, b) => a.precio - b.precio)[0].k;
+    const orden = x.planes.slice().sort((a, b) => a.precio - b.precio);
+    S.planK = (orden.find(pl => stockPlan(x.id, pl.k) > 0) || orden[0]).k;
     return ir('detalle');
   }
   if (d.confirmar){ S.codigo = nuevoCodigo(); return ir('pedido'); }
   if (d.entrar)   { S.auth = true; return ir('mayorista'); }
   if (d.mas)      { const x = CAT.find(s => s.id === d.mas);
-                    S.cant[d.mas] = Math.min(x.planes[0].stock, (S.cant[d.mas] || 0) + 1); return render(); }
+                    S.cant[d.mas] = Math.min(stockPlan(x.id, x.planes[0].k), (S.cant[d.mas] || 0) + 1); return render(); }
   if (d.menos)    { S.cant[d.menos] = Math.max(0, (S.cant[d.menos] || 0) - 1); return render(); }
   if (d.repetir)  { S.cant = { nx:8, dp:4 }; return render(); }
   if (d.enviar)   { S.codigo = nuevoCodigo(); return ir('pedido'); }
@@ -523,4 +530,6 @@ $('#tabMayor').onclick     = () => ir('mayorista');
 montarChrome();
 alDesplazar();
 render();
+/* La portada no muestra bolívares: re-renderizarla reiniciaría el video */
+cargarTasa(() => { if (S.pantalla !== 'home') render(); });
 abrirPortalSiHaceFalta();

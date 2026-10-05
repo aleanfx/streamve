@@ -17,19 +17,23 @@ Tienda de accesos a plataformas de streaming para Venezuela, con dos públicos: 
 | `index.html` | marcado de la tienda (portal de entrada, cabecera, pie) |
 | `estilo.css` | sistema visual compartido |
 | `ui.js` | `CFG` del negocio y utilidades (`usd`, `bs`, `esc`, `hora12`…) |
-| `catalogo.js` | `CAT` (servicios, planes, precios, stock) y `DESC` |
+| `catalogo.js` | `CAT` (servicios, planes, precio público y mayorista) y `DESC`. **El stock no va acá** |
 | `tienda.js` | estado y vistas de la tienda |
 | `datos.js` | **modelo de datos, las 8 reglas de negocio y datos simulados** |
 | `panel.html/.css/.js` | panel de operación (admin) |
 | `pruebas.js` | verificación de reglas: `node pruebas.js` |
 | `docs/` | brief de diseño, naming, prompts de imágenes |
 
-Carga: `ui.js` → `catalogo.js` → `datos.js` → vista. Las vistas **no calculan**: consultan `datos.js`.
+Carga: `ui.js` → `catalogo.js` → `datos.js` → vista (la tienda también carga `datos.js`). Las vistas **no calculan**: consultan `datos.js`. El stock que ve el público es `stockDisponible()` / `stockPlan()`, el mismo del panel.
+
+Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 
 ## Modelo de negocio (decidido)
 
 - Comprar **cuenta completa** (~$11, 4 pantallas) y vender por pantalla. Break-even a 2 de 4.
-- Venta a **$6** personal / **~$4.50** mayorista. El $6 es precio de relación, no de mercado (online se ve a $2.50).
+- Venta a **$6** personal / **$4,50** mayorista (Netflix pantalla). El $6 es precio de relación, no de mercado (online se ve a $2.50).
+- Precios aplicados (público / mayorista): Netflix $6 / $4,50 · Disney+ y HBO Max $5 / $3,75 · Prime $4 / $3 · Spotify, Crunchyroll y Paramount+ $3,50 / $2,60. Cuentas completas: Netflix $20, Disney+ $16, HBO Max $12. Se quitó el plan "Perfil" de Netflix. `node pruebas.js` falla si algún precio queda en pérdida.
+- **Estrategia de canal (decidida):** WhatsApp cierra la venta, la plataforma opera. La web es vitrina (cada compra abre WhatsApp con el pedido escrito), el panel es el sistema de Ale, y el portal es el post-venta del cliente.
 - Proveedores candidatos: TANCHI TV y joseb.shop (VirtuMall), askaboutme (Gudfy).
 - Captación: red cercana + referidos + revendedores chicos. Ads recién con 100+ clientes propios. **Nunca listas de terceros.**
 
@@ -56,14 +60,18 @@ Carga: `ui.js` → `catalogo.js` → `datos.js` → vista. Las vistas **no calcu
 - Tienda completa: portal consumidor/mayorista, hero con tráiler y sonido, rieles con flechas, tarjetas con descripción en hover, ficha de producto en dos columnas, checkout, pedido, login mayorista con collage.
 - Modelo de datos con reglas verificadas.
 - Panel de operación: Hoy, cuentas madre, suscripciones, clientes, dinero.
+- **Fase 0** (base): `<!doctype>` + viewport (el móvil se veía achicado), Open Graph con `assets/og.jpg`, tasa BCV automática, un solo stock, precios nuevos y estado "agotado".
 
-## Pendiente
+## Pendiente (plan por fases, una por vez)
 
-- **Portal del cliente** (`cuenta.html?c=CODIGO`): mis cuentas, barra de tiempo, sacar código, renovar, reportar
-- **Panel del mayorista**: saldo, comprar, mis clientes, vencimientos
-- Revisión completa en **móvil** (todavía no se hizo)
-- **Backend** (Supabase) recién con los flujos validados
-- **HBO Max da margen negativo** (−$0,17): costo $2,83/perfil, venta $2,80. Subir precio o cambiar proveedor.
+1. **Fase 1 — Tienda:** checkout + pedido → una pantalla "Tu pedido" que cierra por WhatsApp; rutas con `#`; quitar `vistaPanel()`; revisión móvil pantalla por pantalla
+2. **Fase 2 — Portal del cliente** (`cuenta.html?c=CODIGO`): tarjetas por suscripción, renovar / no me funciona / pedir código (manual, por WhatsApp), código de acceso aleatorio de 10 caracteres
+3. **Fase 3 — Panel del mayorista** (`mayorista.html`): saldo, comprar contra saldo, mis clientes, vencimientos
+4. **Fase 4 — Panel de Ale:** + VENTA, MANDAR ACCESO, recargas por acreditar, tablas → tarjetas en móvil
+5. **Fase 5 — Backend** (Supabase) con `db.js` que llena `DB` con la misma forma
+6. Más adelante: recordatorios con la API de WhatsApp (~$0,011 por aviso)
+
+Antes de lanzar: poner el WhatsApp y los datos de cobro reales en `CFG` (`ui.js`). Hoy son de relleno.
 
 ## Trampas conocidas
 
@@ -72,10 +80,14 @@ Carga: `ui.js` → `catalogo.js` → `datos.js` → vista. Las vistas **no calcu
 - Una regla de clase le gana a `[hidden]` → está declarado `[hidden]{display:none!important}`
 - `toISOString()` convierte a UTC: en UTC-4 la medianoche cae el día anterior → `dia()` usa partes locales
 - El campo `card` solo se declara si el archivo existe; si no, el tile sale negro
-- El navegador de pruebas de Claude no decodifica video: verificar el hero con ffmpeg
+- El navegador de pruebas de Claude no decodifica video: verificar el hero con ffmpeg. Si la captura se cuelga, pausar el video por JS
+- **Sin `<!doctype html>` + viewport** el navegador entra en modo quirks y el celular dibuja la versión de escritorio achicada. Toda página nueva los lleva
+- La tasa en Bs se lee de `ve.dolarapi.com/v1/dolares/oficial` (BCV). `CFG.tasaBs` es solo el respaldo si la API cae
+- La portada no se re-renderiza al llegar la tasa: reiniciaría el video
 
 ## Assets
 
 - Video y fotos se procesan con el ffmpeg de `imageio_ffmpeg` (Python) y PIL
 - Tarjetas: WebP 1000×1250, ≤150 KB · Hero: MP4 1440×810 crf 21, ~2,6 MB
+- `og.jpg` 1200×630: un fotograma del hero con el logo en la pantalla del televisor (PIL + Arial Black)
 - Originales pesados quedan locales (`.gitignore`), se versiona solo lo optimizado

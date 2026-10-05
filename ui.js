@@ -5,7 +5,8 @@ const CFG = {
   garantiaDias:    30,
   ventanaEntrega:  '8–20 min',
   mostrarBolivares: true,
-  tasaBs:          36.5,
+  tasaBs:          871.37,  // respaldo: la real se lee del BCV al cargar (cargarTasa)
+  tasaFecha:       null,
   descuentoAnual:  0.15,     // 12 meses = −15%
   minMayorista:    10,
   abreHora:        8,       // horario de atención, hora de Venezuela
@@ -17,24 +18,44 @@ const CFG = {
   pmTelefono:      '0414 000 0000'
 };
 
-/* Catálogo.
-   `mayor`  precio unitario de mayorista
-   `color`  color de marca — tiñe la foto de fondo y la muesca de la tarjeta
-   `logo`   SVG en assets/logos/. Si falta, la tarjeta cae al nombre escrito
-   `img`    foto de fondo en assets/. Si falta, cae a la trama monocroma      */
-
 const $  = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const usd = n => '$' + n.toFixed(2).replace('.', ',');
-const bs  = n => 'Bs ' + Math.round(n * CFG.tasaBs).toLocaleString('es-VE');
+/* Pago Móvil cobra con céntimos: el monto en Bs va exacto, con dos decimales */
+const dec2 = n => n.toLocaleString('es-VE', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const bs  = n => 'Bs ' + dec2(n * CFG.tasaBs);
+const tasaTxt = () => dec2(CFG.tasaBs);
 const svc = () => CAT.find(s => s.id === S.sid) || CAT[0];
 const plan = () => { const s = svc(); return s.planes.find(p => p.k === S.planK) || s.planes[0]; };
-const stockDe = x => x.planes.reduce((a, p) => a + p.stock, 0);
+/* El stock sale de las cuentas madre (datos.js): la tienda y el panel
+   leen el mismo número. */
+const stockDe = x => stockDisponible(x.id);
 const totalActual = () => {
   const bruto = plan().precio * (S.meses === 12 ? 12 : 1);
   return S.meses === 12 ? bruto * (1 - CFG.descuentoAnual) : bruto;
 };
 const nuevoCodigo = () => 'SV-' + (4100 + Math.floor(Math.random() * 900));
+
+/* Tasa BCV del día. Se pinta primero con la última conocida y se corrige
+   apenas responde la API; si la API cae, queda la de respaldo de CFG. */
+const CLAVE_TASA = 'streamve.tasa';
+function cargarTasa(alCambiar){
+  try {
+    const g = JSON.parse(localStorage.getItem(CLAVE_TASA));
+    if (g && g.v > 0){ CFG.tasaBs = g.v; CFG.tasaFecha = g.f; }
+  } catch (e) {}
+  fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      const v = j && +j.promedio;
+      if (!(v > 0)) return;
+      const cambio = v !== CFG.tasaBs;
+      CFG.tasaBs = v; CFG.tasaFecha = j.fechaActualizacion;
+      try { localStorage.setItem(CLAVE_TASA, JSON.stringify({ v, f: j.fechaActualizacion })); } catch (e) {}
+      if (cambio && alCambiar) alCambiar();
+    })
+    .catch(() => {});
+}
 
 function ir(p){ S.pantalla = p; window.scrollTo(0, 0); render(); }
 

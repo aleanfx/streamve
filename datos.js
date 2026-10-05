@@ -70,11 +70,18 @@ const capacidadUsada  = m  => perfilesDe(m).filter(p => p.estado === 'asignado')
 /* Regla 5 — una cuenta madre nunca vende más perfiles que su capacidad */
 const tieneCupo = m => capacidadUsada(m) < m.capacidad;
 
+const madresVivas = servicioId => DB.cuentasMadre
+  .filter(m => m.servicioId === servicioId && diasRestantes({ vence: m.vence }) >= 0);
+
 /* Stock real de un servicio: perfiles libres en cuentas madre vivas */
-function stockDisponible(servicioId){
-  return DB.cuentasMadre
-    .filter(m => m.servicioId === servicioId && diasRestantes({ vence: m.vence }) >= 0)
-    .reduce((n, m) => n + perfilesLibres(m).length, 0);
+const stockDisponible = servicioId =>
+  madresVivas(servicioId).reduce((n, m) => n + perfilesLibres(m).length, 0);
+
+/* Stock por plan: una pantalla sale de cualquier perfil libre; una cuenta
+   completa necesita una cuenta madre entera, sin nadie adentro. */
+function stockPlan(servicioId, planClave){
+  if (planClave !== 'completa') return stockDisponible(servicioId);
+  return madresVivas(servicioId).filter(m => perfilesLibres(m).length === m.capacidad).length;
 }
 
 /* Regla 2 — al entregar se toma un perfil libre de una cuenta madre viva.
@@ -228,7 +235,11 @@ const DB = { cuentasMadre: [], perfiles: [], clientes: [], suscripciones: [],
     ['mx', 3,  8.50, 'Panel ClicTV'],
     ['sp', 6,  9.60, 'Gudfy · pack x6'],
     ['nx', 4, 11.20, 'VirtuMall · TANCHI TV'],
-    ['cr', 4,  6.40, 'Panel Tienda Stream']
+    ['cr', 4,  6.40, 'Panel Tienda Stream'],
+    ['mx', 3,  8.50, 'Gudfy · askaboutme'],
+    ['pv', 3,  6.00, 'VirtuMall · TANCHI TV'],
+    ['pv', 3,  6.00, 'Panel ClicTV'],
+    ['dp', 4,  9.00, 'Panel Digital Plus']
   ];
   receta.forEach(([servicioId, cap, costo, proveedor], i) => {
     const comprada = masDias(HOY, -entre(4, 26));

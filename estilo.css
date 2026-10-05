@@ -152,6 +152,7 @@
     padding:14px 18px;border:1px solid transparent;text-align:left;
     background:transparent;color:var(--ink);border-radius:var(--r);
   }
+  a.btn{text-decoration:none;display:inline-block}
   .btn-primary{background:var(--accent);color:var(--ink);border-color:var(--accent)}
   .btn-primary:hover{background:var(--accent-600);border-color:var(--accent-600)}
   .btn-line{border-color:var(--dim)}
@@ -348,8 +349,10 @@
   .art-badge{
     position:absolute;top:10px;right:10px;
     font-weight:800;font-size:10px;letter-spacing:.06em;padding:3px 6px;
-    border-radius:3px;
+    border-radius:3px;background:rgba(0,0,0,.45);color:var(--mute-2);
   }
+  .art-badge.bajo{background:var(--accent);color:var(--ink)}
+  .art-badge.agotado{background:rgba(0,0,0,.72);color:var(--mute);border:1px solid var(--line-2)}
   .tile-foot{padding:11px 12px 12px;border-top:1px solid var(--line)}
   .tile:hover .tile-foot{background:var(--tile)}
   .tile-name{font-weight:800;font-size:17px;line-height:1.1;letter-spacing:-.02em;margin-bottom:6px}
@@ -533,6 +536,8 @@
   }
   .plan:hover{border-color:var(--mute);background:rgba(255,255,255,.05)}
   .plan[aria-pressed="true"]{border-color:var(--accent);background:rgba(236,48,19,.09)}
+  .plan.sin .plan-txt b,.plan.sin .plan-precio{color:var(--mute)}
+  .plan.sin .plan-txt i{color:var(--accent-400)}
   .plan-marca{
     width:17px;height:17px;border-radius:50%;flex:none;margin-top:2px;
     border:1.5px solid var(--line-2);transition:border-color .18s ease;
