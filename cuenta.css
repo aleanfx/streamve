@@ -235,3 +235,6 @@ body{background:#161413}
 .cpie span{flex:1;min-width:220px}
 .cpie a{color:var(--mute-2);font-weight:800;text-decoration:none}
 .cpie a:hover{color:var(--ink)}
+.c-cargando{display:flex;align-items:center;justify-content:center;gap:12px;padding:120px 0;color:var(--mute);font-size:14px}
+.c-cargando i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}

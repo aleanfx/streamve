@@ -11,7 +11,8 @@
 --   revendedor  → lo suyo (unidades, saldo, clientes), por funciones
 --   admin (Ale) → todo
 --
--- ESTADO: escrito y revisado, todavía NO ejecutado contra un Supabase real.
+-- ESTADO: ejecutado en el proyecto csptgybisyleixcdgvpe (los permisos de tabla
+-- se agregaron después: ver permisos.sql).
 
 create extension if not exists pgcrypto;
 
@@ -596,6 +597,13 @@ grant execute on function es_admin(), mi_cliente(), mi_saldo(), mis_unidades(),
   entregar_pedido(text, uuid), registrar_venta(uuid, text, text, text, text, int, text),
   reponer(uuid, text), renovar(uuid, int), acreditar_recarga(uuid), liberar(uuid)
   to authenticated;
+
+-- Los proyectos nuevos de Supabase no dan acceso a las tablas: se abre
+-- acá y las filas las siguen cuidando las reglas de arriba.
+grant usage on schema public to anon, authenticated;
+grant select on planes to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
 
 -- ═══ catálogo inicial (el mismo de catalogo.js) ═══
 

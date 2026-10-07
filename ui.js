@@ -22,8 +22,26 @@ const CFG = {
   pmBanco:         '0102 Venezuela',
   pmTelefono:      '0414 000 0000',
   pmCedula:        'V-00.000.000',
-  sitio:           'https://streamve.vercel.app'
+  sitio:           'https://streamve.vercel.app',
+  /* Supabase. La clave anon es PÚBLICA por diseño: va en el navegador y la
+     seguridad la ponen las reglas de la base (supabase/esquema.sql). La
+     clave secreta (service_role / sb_secret) no va NUNCA en este repo. */
+  supabaseUrl:     'https://csptgybisyleixcdgvpe.supabase.co',
+  supabaseKey:     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzcHRneWJpc3lsZWl4Y2RndnBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMjU1MTQsImV4cCI6MjEwNjkwMTUxNH0.yKYkrmNDmqgiCdGXj0P6rHagYVU1PvVmPjUtYnleWRQ'
 };
+
+/* Modo demo: datos simulados en vez de la base real. Se entra con ?demo
+   en cualquier link (queda guardado en la pestaña) y se sale con ?demo=0.
+   En las pruebas de node no hay navegador: siempre es demo. */
+const DEMO = (() => {
+  if (typeof location === 'undefined') return true;
+  const q = new URLSearchParams(location.search);
+  try {
+    if (q.get('demo') === '0') sessionStorage.removeItem('streamve.demo');
+    else if (q.has('demo')) sessionStorage.setItem('streamve.demo', '1');
+    return sessionStorage.getItem('streamve.demo') === '1' || !CFG.supabaseUrl;
+  } catch (e) { return q.has('demo') && q.get('demo') !== '0'; }
+})();
 
 const $  = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

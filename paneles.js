@@ -73,3 +73,54 @@ function textoAcceso(s){
     'No cambies la contraseña ni uses los otros perfiles: así no se cae.'
   ].join('\n');
 }
+
+/* ── login de los paneles (solo con la base real) ──
+   Cada uno escribe su correo y su contraseña: nada de eso pasa por el
+   código ni queda guardado acá, la sesión la maneja Supabase. */
+function pantallaLogin(raiz, { rol, error, nuevo, ok }, alEntrar){
+  raiz.innerHTML = `
+  <section class="login-p">
+    <form class="login-p-caja" data-login-p="1" autocomplete="on">
+      <div class="kicker">${esc(rol)}</div>
+      <h1>${nuevo ? 'Crear usuario' : 'Entrar'}</h1>
+      <label>Correo<input id="lpCorreo" type="email" autocomplete="username" required></label>
+      <label>Contraseña<input id="lpClave" type="password" minlength="8"
+             autocomplete="${nuevo ? 'new-password' : 'current-password'}" required></label>
+      ${error ? `<p class="login-p-error">${esc(error)}</p>` : ''}
+      ${ok ? `<p class="login-p-ok">${esc(ok)}</p>` : ''}
+      <button class="acc pri grande" type="submit">${nuevo ? 'CREAR USUARIO' : 'ENTRAR'}</button>
+      <button class="login-p-demo" type="button" data-cambiar="1">${nuevo ? '¿Ya tenés usuario? Entrar' : '¿Primera vez? Crear usuario'}</button>
+      <a class="login-p-demo" href="?demo">Ver con datos de prueba →</a>
+    </form>
+  </section>`;
+  document.body.classList.add('sin-sesion');
+  const f = raiz.querySelector('[data-login-p]');
+  f.querySelector('[data-cambiar]').onclick = () => pantallaLogin(raiz, { rol, nuevo: !nuevo }, alEntrar);
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const b = f.querySelector('[type=submit]'); b.disabled = true; b.textContent = nuevo ? 'CREANDO…' : 'ENTRANDO…';
+    const correo = f.querySelector('#lpCorreo').value, clave = f.querySelector('#lpClave').value;
+    if (nuevo){
+      const r = await crearUsuario(correo, clave);
+      if (!r.ok) return pantallaLogin(raiz, { rol, nuevo, error: r.motivo }, alEntrar);
+      if (!r.sesion) return pantallaLogin(raiz, { rol, ok:
+        'Listo. Te llegó un correo de Supabase: confirmalo y después entrá acá. Avisale a Claude para que te dé el acceso.' }, alEntrar);
+      document.body.classList.remove('sin-sesion');
+      return alEntrar();
+    }
+    const r = await entrar(correo, clave);
+    if (!r.ok) return pantallaLogin(raiz, { rol, error: r.motivo }, alEntrar);
+    document.body.classList.remove('sin-sesion');
+    alEntrar();
+  };
+}
+
+/* Mientras carga la base, un aviso en vez de una pantalla vacía */
+const cargandoHTML = t => `<div class="cargando"><i></i>${esc(t || 'Cargando…')}</div>`;
+
+/* Un botón ocupado mientras la base responde */
+async function ocupado(boton, tarea){
+  if (boton){ boton.disabled = true; boton.classList.add('ocupado'); }
+  try { return await tarea(); }
+  finally { if (boton && boton.isConnected){ boton.disabled = false; boton.classList.remove('ocupado'); } }
+}

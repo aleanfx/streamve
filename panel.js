@@ -30,6 +30,7 @@ const waCliente = (clienteId, texto) => waLink(texto, cliente(clienteId).whatsap
 /* A Ale le toca avisar a sus clientes directos. Las unidades de los
    revendedores las avisa cada revendedor desde su panel. */
 const directos = lista => lista.filter(s => cliente(s.clienteId).tipo !== 'mayorista');
+const METODO = { binance:'Binance', pagoMovil:'Pago Móvil', whatsapp:'WhatsApp', saldo:'Saldo', otro:'Otro' };
 
 /* Lo que recibe el cliente al entregarle: acceso + su link personal */
 function mensajeAcceso(s){
@@ -105,12 +106,13 @@ function vistaHoy(){
         const sin = stockPlan(it.servicioId, it.planClave) < it.cantidad;
         return `<tr>
           <td><span class="prin">${esc(p.id)}</span><div class="sub">${fechaCorta(p.creado)}</div></td>
-          <td>${esc(nombreCliente(p.clienteId))}</td>
-          <td>${punto(it.servicioId)}${esc(sv.nombre)}<div class="sub">${esc(etiquetaPlan(it.servicioId, it.planClave))}${it.cantidad > 1 ? ' × ' + it.cantidad : ''}</div></td>
-          <td class="num">${usd(p.total)}<div class="sub">${p.metodoPago === 'binance' ? 'Binance' : 'Pago Móvil'} · ${esc(p.referencia)}</div></td>
-          <td><span class="chip-e e-neutro">${p.estado.toUpperCase()}</span></td>
-          <td>${sin ? `<button class="acc" data-cajon="madre" data-sid="${it.servicioId}">SIN STOCK · + CUENTA</button>`
-                    : `<button class="acc pri" data-entregar="${p.id}">ENTREGAR</button>`}</td>
+          <td>${p.clienteId ? esc(nombreCliente(p.clienteId)) : '<span class="sub">llegó por la web</span>'}</td>
+          <td>${punto(it.servicioId)}${esc(sv.nombre)}<div class="sub">${esc(etiquetaPlan(it.servicioId, it.planClave))}${it.cantidad > 1 ? ' × ' + it.cantidad : ''}${it.meses === 12 ? ' · 12 meses' : ''}</div></td>
+          <td class="num">${usd(p.total)}<div class="sub">${METODO[p.metodoPago] || esc(p.metodoPago)}${p.referencia ? ' · ' + esc(p.referencia) : ''}</div></td>
+          <td><span class="chip-e ${p.estado === 'esperando' ? 'e-porVencer' : 'e-neutro'}">${p.estado === 'esperando' ? 'SIN CAPTURA' : p.estado.toUpperCase()}</span></td>
+          <td class="acciones">${sin ? `<button class="acc" data-cajon="madre" data-sid="${it.servicioId}">SIN STOCK · + CUENTA</button>`
+                    : `<button class="acc pri" data-entregar="${p.id}">ENTREGAR</button>`}
+              ${p.estado === 'esperando' ? `<button class="acc" data-descartar="${p.id}">DESCARTAR</button>` : ''}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`
       : vacio('Nada pendiente', 'Todos los pedidos están entregados.')}
@@ -356,6 +358,8 @@ function vistaDinero(){
 
 function cajonVenta(){
   const v = P.venta;
+  const ped = v.pedido && DB.pedidos.find(p => p.id === v.pedido);
+  if (ped){ const it = ped.items[0]; v.sid = it.servicioId; v.planK = it.planClave; v.meses = it.meses || 1; }
   const x = servPorId(v.sid);
   const pl = planDe(v.sid, v.planK);
   const total = precioVenta(pl, v.meses);
@@ -365,7 +369,8 @@ function cajonVenta(){
     ? DB.clientes.filter(c => !q || c.nombre.toLowerCase().includes(q) || c.whatsapp.includes(q)).slice(0, 6) : [];
   const elegido = v.clienteId && DB.clientes.find(c => c.id === v.clienteId);
 
-  return cajonHTML('Nueva venta', `
+  return cajonHTML(ped ? 'Entregar ' + ped.id : 'Nueva venta', `
+    ${ped ? `<p class="cajon-nota">Llegó por la web. Verificá la captura en el chat y decí de quién es.</p>` : ''}
     <div class="seg2">
       <button data-v-modo="nuevo" aria-pressed="${v.modo === 'nuevo'}">CLIENTE NUEVO</button>
       <button data-v-modo="existe" aria-pressed="${v.modo === 'existe'}">YA ES CLIENTE</button>
@@ -383,7 +388,7 @@ function cajonVenta(){
           <b>${esc(c.nombre)}</b><span>+${esc(c.whatsapp)} · ${suscripcionesDe(c.id).length} cuentas</span>
         </button>`).join('') || '<p class="sub">Nadie con ese nombre.</p>'}</div>`}
 
-    <h4>SERVICIO</h4>
+    ${ped ? '' : `<h4>SERVICIO</h4>
     <div class="servs">${CAT.map(s => { const n = stockDisponible(s.id); return `
       <button data-v-sid="${s.id}" aria-pressed="${v.sid === s.id}" ${n ? '' : 'disabled'}>
         ${punto(s.id)}<b>${esc(s.nombre)}</b><span>${n ? n + ' libres' : 'agotado'}</span>
@@ -403,10 +408,10 @@ function cajonVenta(){
     <div class="opciones">
       ${[['binance','Binance'],['pagoMovil','Pago Móvil'],['otro','Otro']].map(([k, t]) =>
         `<button data-v-metodo="${k}" aria-pressed="${v.metodo === k}"><b>${t}</b></button>`).join('')}
-    </div>
+    </div>`}
   `, `
     <div class="pie-total"><b>${usd(total)}</b><span>${esc(x.nombre)} · ${esc(pl.etq)} · ${v.meses === 12 ? '12 meses' : '1 mes'}${v.modo === 'existe' && elegido ? ' · ' + esc(primer(elegido.nombre)) : ''}</span></div>
-    <button class="acc pri grande" data-registrar="1" ${st ? '' : 'disabled'}>REGISTRAR VENTA</button>
+    <button class="acc pri grande" data-registrar="1" ${st ? '' : 'disabled'}>${ped ? 'ENTREGAR' : 'REGISTRAR VENTA'}</button>
   `);
 }
 
@@ -493,8 +498,18 @@ function pintar(){
 /* Todo lo que cambia datos repinta la vista y, si hay cajón, el cajón */
 const repintar = () => { pintar(); if (P.cajon) pintarCajon(); };
 
-document.addEventListener('click', e => {
-  const t = e.target.closest('[data-liberar],[data-ir],[data-ver],[data-filtro],[data-reponer],[data-entregar],[data-renovar],[data-renovar-madre],[data-acreditar],[data-acceso],[data-cajon],[data-cerrar-cajon],[data-v-modo],[data-v-cliente],[data-v-sid],[data-v-plan],[data-v-meses],[data-v-metodo],[data-registrar],[data-m-sid],[data-guardar-madre]');
+/* Corre una acción contra la base (o la demo): botón ocupado mientras
+   tanto, aviso si falla, y repinta con lo que quedó guardado. */
+async function hacer(boton, tarea, alTerminar){
+  const r = await ocupado(boton, tarea);
+  if (!r || !r.ok){ aviso((r && r.motivo) || 'No se pudo', 'error'); return null; }
+  repintar();
+  if (alTerminar) alTerminar(r);
+  return r;
+}
+
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-liberar],[data-descartar],[data-ir],[data-ver],[data-filtro],[data-reponer],[data-entregar],[data-renovar],[data-renovar-madre],[data-acreditar],[data-acceso],[data-cajon],[data-cerrar-cajon],[data-v-modo],[data-v-cliente],[data-v-sid],[data-v-plan],[data-v-meses],[data-v-metodo],[data-registrar],[data-m-sid],[data-guardar-madre]');
   if (!t) return;
   const d = t.dataset;
 
@@ -504,46 +519,30 @@ document.addEventListener('click', e => {
 
   if (d.entregar){
     const ped = DB.pedidos.find(x => x.id === d.entregar);
-    const r = entregarPedido(d.entregar);
-    if (!r.ok) return aviso(r.motivo, 'error');
-    pintar();
-    return abrirCajon({ tipo:'acceso', sid:r.suscripciones[0].id, titulo:'Pedido ' + ped.id + ' entregado' });
+    /* Sin cliente (vino de la web): primero hay que decir de quién es */
+    if (!ped.clienteId){
+      P.venta = Object.assign(P.venta, { pedido:ped.id, modo:'nuevo', clienteId:null, nombre:'', wa:'', busca:'' });
+      return abrirCajon({ tipo:'venta' });
+    }
+    return hacer(t, () => ACC.entregarPedido(ped.id), r =>
+      abrirCajon({ tipo:'acceso', sid:r.suscripciones[0].id, titulo:'Pedido ' + ped.id + ' entregado' }));
   }
-  if (d.reponer){
-    const r = reponer(d.reponer, 'Reportado desde el panel');
-    if (!r.ok) return aviso(r.motivo, 'error');
-    pintar();
-    return abrirCajon({ tipo:'acceso', sid:d.reponer, titulo:'Repuesta',
-      nota:'Perfil nuevo, misma fecha de vencimiento. Mandale el acceso nuevo.' });
-  }
-  if (d.renovar){
-    const r = renovar(d.renovar, 1);
-    if (!r.ok) return aviso(r.motivo, 'error');
-    aviso('Renovada hasta el ' + fechaCorta(r.vence) + ' · ' + usd(r.precio));
-    return repintar();
-  }
-  if (d.renovarMadre){
-    const r = renovarMadre(d.renovarMadre);
-    if (!r.ok) return aviso(r.motivo, 'error');
-    aviso('Cuenta madre renovada hasta el ' + fechaCorta(r.vence));
-    return repintar();
-  }
-  if (d.acreditar){
-    const r = acreditarRecarga(d.acreditar);
-    if (!r.ok) return aviso(r.motivo, 'error');
-    aviso(usd(r.movimiento.monto) + ' acreditados a ' + nombreCliente(r.movimiento.clienteId));
-    return repintar();
-  }
-  if (d.liberar){
-    const r = liberar(d.liberar);
-    if (!r.ok) return aviso(r.motivo, 'error');
-    aviso(r.perfiles.length + (r.perfiles.length === 1 ? ' perfil volvió' : ' perfiles volvieron') + ' al stock. Cambiale el PIN.');
-    return repintar();
-  }
+  if (d.descartar) return hacer(t, () => ACC.descartarPedido(d.descartar), () => aviso('Pedido descartado'));
+  if (d.reponer) return hacer(t, () => ACC.reponer(d.reponer, 'Reportado desde el panel'), () =>
+    abrirCajon({ tipo:'acceso', sid:d.reponer, titulo:'Repuesta',
+      nota:'Perfil nuevo, misma fecha de vencimiento. Mandale el acceso nuevo.' }));
+  if (d.renovar) return hacer(t, () => ACC.renovar(d.renovar, 1), r =>
+    aviso('Renovada hasta el ' + fechaCorta(r.vence) + ' · ' + usd(r.precio)));
+  if (d.renovarMadre) return hacer(t, () => ACC.renovarMadre(d.renovarMadre), r =>
+    aviso('Cuenta madre renovada hasta el ' + fechaCorta(r.vence)));
+  if (d.acreditar) return hacer(t, () => ACC.acreditarRecarga(d.acreditar), r =>
+    aviso(usd(r.movimiento.monto) + ' acreditados a ' + nombreCliente(r.movimiento.clienteId)));
+  if (d.liberar) return hacer(t, () => ACC.liberar(d.liberar), r =>
+    aviso(r.perfiles.length + (r.perfiles.length === 1 ? ' perfil volvió' : ' perfiles volvieron') + ' al stock. Cambiale el PIN.'));
   if (d.acceso) return abrirCajon({ tipo:'acceso', sid:d.acceso });
 
   if (d.cajon === 'venta'){
-    P.venta = Object.assign(P.venta, d.cliente
+    P.venta = Object.assign(P.venta, { pedido:null }, d.cliente
       ? { modo:'existe', clienteId:d.cliente, busca:nombreCliente(d.cliente) }
       : { modo:'nuevo', clienteId:null, nombre:'', wa:'', busca:'' });
     return abrirCajon({ tipo:'venta' });
@@ -566,25 +565,35 @@ document.addEventListener('click', e => {
   if (d.registrar){
     const v = P.venta;
     if (v.modo === 'existe' && !v.clienteId) return aviso('Elegí el cliente', 'error');
-    const r = registrarVenta(v.modo === 'existe'
+    if (v.pedido){
+      const pid = v.pedido;
+      return hacer(t, async () => {
+        let cli = v.clienteId;
+        if (v.modo === 'nuevo'){
+          const c = await ACC.crearCliente(v.nombre, v.wa);
+          if (!c.ok) return c;
+          cli = c.cliente.id;
+        }
+        return ACC.entregarPedido(pid, cli);
+      }, r => {
+        P.venta.pedido = null; P.venta.nombre = ''; P.venta.wa = '';
+        abrirCajon({ tipo:'acceso', sid:r.suscripciones[0].id, titulo:'Pedido ' + pid + ' entregado' });
+      });
+    }
+    return hacer(t, () => ACC.registrarVenta(v.modo === 'existe'
       ? { clienteId:v.clienteId, servicioId:v.sid, planClave:v.planK, meses:v.meses, metodoPago:v.metodo }
-      : { nombre:v.nombre, whatsapp:v.wa, servicioId:v.sid, planClave:v.planK, meses:v.meses, metodoPago:v.metodo });
-    if (!r.ok) return aviso(r.motivo, 'error');
-    P.venta.nombre = ''; P.venta.wa = '';
-    pintar();
-    return abrirCajon({ tipo:'acceso', sid:r.suscripcion.id, titulo:'Venta registrada' });
+      : { nombre:v.nombre, whatsapp:v.wa, servicioId:v.sid, planClave:v.planK, meses:v.meses, metodoPago:v.metodo }),
+      r => { P.venta.nombre = ''; P.venta.wa = '';
+             abrirCajon({ tipo:'acceso', sid:r.suscripcion.id, titulo:'Venta registrada' }); });
   }
 
   /* dentro del cajón de cuenta madre */
   if (d.mSid){ P.madre.sid = d.mSid; P.madre.capacidad = CAPACIDAD_TIPICA[d.mSid] || 4; return pintarCajon(); }
   if (d.guardarMadre){
     const m = P.madre;
-    const r = agregarCuentaMadre({ servicioId:m.sid, correo:m.correo, clave:m.clave, capacidad:m.capacidad,
-                                   costo:m.costo, proveedor:m.proveedor, vence:m.vence });
-    if (!r.ok) return aviso(r.motivo, 'error');
-    aviso(servPorId(m.sid).nombre + ': ' + r.madre.capacidad + ' perfiles nuevos en stock');
-    cerrarCajon();
-    return pintar();
+    return hacer(t, () => ACC.agregarCuentaMadre({ servicioId:m.sid, correo:m.correo, clave:m.clave,
+        capacidad:m.capacidad, costo:m.costo, proveedor:m.proveedor, vence:m.vence }),
+      r => { aviso(servPorId(m.sid).nombre + ': ' + r.madre.capacidad + ' perfiles nuevos en stock'); cerrarCajon(); });
   }
 });
 
@@ -621,8 +630,34 @@ document.addEventListener('input', e => {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && P.cajon) cerrarCajon(); });
 document.getElementById('pVenta').onclick = () => {
-  P.venta = Object.assign(P.venta, { modo:'nuevo', clienteId:null, nombre:'', wa:'', busca:'' });
+  P.venta = Object.assign(P.venta, { pedido:null, modo:'nuevo', clienteId:null, nombre:'', wa:'', busca:'' });
   abrirCajon({ tipo:'venta' });
 };
 
-pintar();
+/* ── arranque ──
+   En demo, directo. Con la base real: sesión → ¿es admin? → cargar todo. */
+async function iniciar(){
+  const main = document.getElementById('pMain');
+  if (!EN_VIVO){
+    pintar();
+    document.body.insertAdjacentHTML('beforeend', '<a class="modo-demo" href="?demo=0">DATOS DE PRUEBA · SALIR</a>');
+    return;
+  }
+  main.innerHTML = cargandoHTML('Revisando la sesión…');
+  const ses = await sesionActual();
+  if (!ses) return pantallaLogin(main, { rol:'PANEL DE OPERACIÓN' }, iniciar);
+  let admin = false;
+  try { admin = await soyAdmin(); } catch (e) {}
+  if (!admin){
+    await salir();
+    return pantallaLogin(main, { rol:'PANEL DE OPERACIÓN', error:'Ese usuario no tiene acceso al panel.' }, iniciar);
+  }
+  main.innerHTML = cargandoHTML('Cargando la base…');
+  try { await cargarTodo(); }
+  catch (e){ main.innerHTML = vacio('No se pudo cargar la base', motivoDe(e)); return; }
+  document.body.classList.remove('sin-sesion');
+  pintar();
+}
+
+document.getElementById('pSalir').onclick = async () => { await salir(); location.reload(); };
+iniciar();

@@ -404,3 +404,33 @@ body.con-cajon{overflow:hidden}
 }
 .link-portal span{color:var(--mute)}
 .link-portal b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+
+/* ── login de los paneles ── */
+body.sin-sesion .pnav,body.sin-sesion .saldo,body.sin-sesion .pbar-venta,body.sin-sesion .pbar-salir{display:none}
+.login-p{min-height:calc(100vh - 160px);display:grid;place-items:center;padding:40px 0}
+.login-p-caja{
+  width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;
+  padding:28px;border:1px solid var(--line-2);border-radius:var(--r-card);background:#1b1918;
+}
+.login-p-caja h1{margin:0 0 4px;font-size:30px;font-weight:800;letter-spacing:-.03em}
+.login-p-caja label{display:flex;flex-direction:column;gap:6px;font-size:9.5px;letter-spacing:.16em;font-weight:800;color:var(--dim);text-transform:uppercase}
+.login-p-caja input{
+  font-size:15px;min-height:46px;padding:9px 12px;text-transform:none;letter-spacing:0;font-weight:400;
+  background:rgba(0,0,0,.25);border:1px solid var(--line-2);color:var(--ink);border-radius:var(--r);
+}
+.login-p-caja input:focus{outline:0;border-color:var(--accent)}
+.login-p-caja .acc{text-align:center}
+.login-p-error{margin:0;color:var(--accent-400);font-size:13.5px;font-weight:600}
+.login-p-demo{font-size:12px;color:var(--mute);text-decoration:none;text-align:center}
+.login-p-demo:hover{color:var(--ink)}
+.cargando{display:flex;align-items:center;gap:12px;padding:60px 0;color:var(--mute);font-size:14px;justify-content:center}
+.cargando i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+.acc.ocupado{opacity:.6;cursor:progress}
+.modo-demo{
+  position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:80;
+  font-size:10px;font-weight:800;letter-spacing:.14em;padding:6px 9px;border-radius:3px;
+  background:var(--avisa);color:#141212;text-decoration:none;
+}
+.login-p-ok{margin:0;color:var(--vive);font-size:13.5px;line-height:1.5}
+button.login-p-demo{background:none;border:0;padding:0;cursor:pointer}

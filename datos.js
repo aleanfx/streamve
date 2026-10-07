@@ -93,13 +93,23 @@ const tieneCupo = m => capacidadUsada(m) < m.capacidad;
 const madresVivas = servicioId => DB.cuentasMadre
   .filter(m => m.servicioId === servicioId && diasRestantes({ vence: m.vence }) >= 0);
 
+/* Con la base real, la tienda y el revendedor no ven las cuentas madre:
+   reciben el stock ya contado (stock_publico) y se guarda acá. */
+let STOCK_FIJO = null;
+const stockFijo = (servicioId, planClave) => {
+  const x = CAT.find(c => c.id === servicioId);
+  const k = planClave || (x && (x.planes.find(p => p.k !== 'completa') || x.planes[0]).k);
+  return STOCK_FIJO[servicioId + ':' + k] || 0;
+};
+
 /* Stock real de un servicio: perfiles libres en cuentas madre vivas */
-const stockDisponible = servicioId =>
-  madresVivas(servicioId).reduce((n, m) => n + perfilesLibres(m).length, 0);
+const stockDisponible = servicioId => STOCK_FIJO ? stockFijo(servicioId)
+  : madresVivas(servicioId).reduce((n, m) => n + perfilesLibres(m).length, 0);
 
 /* Stock por plan: una pantalla sale de cualquier perfil libre; una cuenta
    completa necesita una cuenta madre entera, sin nadie adentro. */
 function stockPlan(servicioId, planClave){
+  if (STOCK_FIJO) return stockFijo(servicioId, planClave);
   if (planClave !== 'completa') return stockDisponible(servicioId);
   return madresVivas(servicioId).filter(m => perfilesLibres(m).length === m.capacidad).length;
 }
@@ -141,7 +151,7 @@ function crearSuscripcion({ clienteId, servicioId, planClave, meses, precio, asi
   perfilIds.forEach(id => { DB.perfiles.find(p => p.id === id).estado = 'asignado'; });
   const s = {
     id: 'ss-' + (DB.suscripciones.length + 1),
-    clienteId, perfilId: perfilIds[0], perfilIds, planClave,
+    clienteId, servicioId, perfilId: perfilIds[0], perfilIds, planClave,
     inicio: dia(HOY), vence: dia(masDias(HOY, OP.diasPorMes * meses)),
     precio, meses, estado: 'activa', reposiciones: 0, renovaciones: [],
     asignadoA: asignadoA || null
@@ -152,10 +162,12 @@ function crearSuscripcion({ clienteId, servicioId, planClave, meses, precio, asi
 
 /* Regla 1 — el stock se descuenta al entregar un pedido verificado, nunca
    al recibirlo. Si falta stock de algún ítem, no se entrega nada. */
-function entregarPedido(pedidoId){
+function entregarPedido(pedidoId, clienteId){
   const p = DB.pedidos.find(x => x.id === pedidoId);
   if (!p) return { ok: false, motivo: 'El pedido no existe' };
   if (p.estado === 'entregado') return { ok: false, motivo: 'Ya estaba entregado' };
+  if (!p.clienteId && !clienteId) return { ok: false, motivo: 'Indicá de qué cliente es el pedido' };
+  if (!p.clienteId) p.clienteId = clienteId;
   for (const it of p.items)
     if (stockPlan(it.servicioId, it.planClave) < it.cantidad)
       return { ok: false, motivo: 'No hay stock de ' + CAT.find(c => c.id === it.servicioId).nombre };
@@ -447,6 +459,7 @@ const clientePorCodigo = codigo =>
   DB.clientes.find(c => c.codigoAcceso.toUpperCase() === String(codigo || '').trim().toUpperCase());
 
 const servicioDeSuscripcion = s => {
+  if (s.servicioId) return CAT.find(x => x.id === s.servicioId);
   const p = DB.perfiles.find(x => x.id === s.perfilId);
   const m = p && DB.cuentasMadre.find(x => x.id === p.cuentaMadreId);
   return m && CAT.find(x => x.id === m.servicioId);
@@ -471,8 +484,11 @@ const vencenEntre = (desde, hasta) => DB.suscripciones
   })
   .sort((a, b) => aFecha(a.vence) - aFecha(b.vence));
 
+/* "esperando": se abrió WhatsApp desde la web y todavía no llegó la
+   captura. Se muestra tres días; después se da por abandonado. */
 const pedidosPendientes = () => DB.pedidos
-  .filter(p => p.estado === 'pagado' || p.estado === 'verificado' || p.estado === 'preparando')
+  .filter(p => ['pagado','verificado','preparando'].includes(p.estado) ||
+               (p.estado === 'esperando' && diasEntre(p.creado, HOY) <= 3))
   .sort((a, b) => aFecha(a.creado) - aFecha(b.creado));
 
 const incidenciasAbiertas = () => DB.incidencias.filter(i => !i.cerrada);
@@ -535,6 +551,13 @@ const nuevoCodigoAcceso = (rnd = Math.random) =>
 const DB = { cuentasMadre: [], perfiles: [], clientes: [], clientesFinales: [],
              suscripciones: [], pedidos: [], movimientos: [], incidencias: [] };
 
+function descartarPedido(pedidoId){
+  const p = DB.pedidos.find(x => x.id === pedidoId);
+  if (!p || p.estado === 'entregado') return { ok: false, motivo: 'No se puede descartar' };
+  p.estado = 'rechazado';
+  return { ok: true };
+}
+
 function nuevoCliente(nombre, whatsapp, tipo){
   const c = { id: 'c-' + (DB.clientes.length + 1), nombre, tipo, whatsapp,
               codigoAcceso: nuevoCodigoAcceso(), creado: dia(HOY) };
@@ -553,6 +576,7 @@ const FINALES = ['Yusmary','Kelvin','Oriana','Deivis','Maryelis','Jhonny','Alban
                  'Nailet','Yorman','Dayana','Leonel','Rosmery','Brayan','Yuleidy','Ender'];
 
 (function sembrar(){
+  if (!DEMO) return;          // con la base real, los datos llegan de db.js
   /* ── Cuentas madre: lo que Ale le compró al proveedor ── */
   const receta = [
     ['nx', 4, 11.00, 'VirtuMall · TANCHI TV'],
@@ -629,7 +653,7 @@ const FINALES = ['Yusmary','Kelvin','Oriana','Deivis','Maryelis','Jhonny','Alban
     perfil.estado = 'asignado';
     const s = {
       id: 'ss-' + (DB.suscripciones.length + 1),
-      clienteId: cli.id, perfilId: perfil.id, perfilIds: [perfil.id], planClave: plan.k,
+      clienteId: cli.id, servicioId: serv.id, perfilId: perfil.id, perfilIds: [perfil.id], planClave: plan.k,
       inicio: dia(masDias(vence, -OP.diasPorMes)), vence: dia(vence),
       precio, meses: 1, estado: 'activa', reposiciones: 0, renovaciones: [],
       asignadoA: asignadoA || null

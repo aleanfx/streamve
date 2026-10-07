@@ -31,7 +31,8 @@ function mayoristaActual(){
   const todos = DB.clientes.filter(c => c.tipo === 'mayorista');
   return todos.find(c => slugUsuario(c.nombre) === slugUsuario(u)) || todos[0];
 }
-const YO = mayoristaActual();
+/* Con la base real, YO llega después del login (iniciar) */
+let YO = EN_VIVO ? null : mayoristaActual();
 
 const misUnidades = () => suscripcionesDe(YO.id).filter(s => s.estado !== 'cancelada');
 const clienteFinal = s => s.asignadoA && DB.clientesFinales.find(c => c.id === s.asignadoA);
@@ -275,7 +276,7 @@ function pintar(){
   etiquetarTablas(main);
 }
 
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
   const t = e.target.closest('[data-ir],[data-ver],[data-filtro],[data-mas],[data-menos],[data-comprar],[data-recarga],[data-monto],[data-metodo],[data-avisar-recarga],[data-asignando],[data-cancelar],[data-renovar]');
   if (!t) return;
   const d = t.dataset;
@@ -292,7 +293,7 @@ document.addEventListener('click', e => {
   if (d.menos){ M.cant[d.menos] = Math.max(0, (M.cant[d.menos] || 0) - 1); return pintar(); }
   if (d.comprar){
     const items = Object.entries(M.cant).map(([servicioId, cantidad]) => ({ servicioId, cantidad }));
-    const r = comprarMayorista(YO.id, items);
+    const r = await ocupado(t, () => ACC.comprar(YO.id, items));
     if (!r.ok) return aviso(r.motivo, 'error');
     M.cant = {}; M.nuevas = r.suscripciones.map(s => s.id);
     M.vista = 'clientes'; M.filtro = 'todas';
@@ -306,28 +307,30 @@ document.addEventListener('click', e => {
   /* El link abre WhatsApp; la recarga queda "por acreditar" hasta que
      Ale verifique la captura. */
   if (d.avisarRecarga){
-    const r = solicitarRecarga(YO.id, M.monto, M.metodo);
-    if (!r.ok){ e.preventDefault(); return aviso(r.motivo, 'error'); }
+    if (!(M.monto > 0)){ e.preventDefault(); return aviso('Elegí un monto', 'error'); }
+    const r = await ACC.solicitarRecarga(YO.id, M.monto, M.metodo);
+    if (!r.ok) return aviso(r.motivo, 'error');
     M.recarga = false;
-    setTimeout(() => { pintar(); aviso('Recarga avisada. Se acredita apenas la verifiquemos.'); }, 300);
+    pintar(); aviso('Recarga avisada. Se acredita apenas la verifiquemos.');
     return;
   }
 
   if (d.asignando){ M.asignando = d.asignando; pintar(); document.getElementById('aNombre')?.focus(); return; }
   if (d.cancelar){ M.asignando = null; return pintar(); }
   if (d.renovar){
-    const r = renovarConSaldo(d.renovar, 1);
+    const r = await ocupado(t, () => ACC.renovarConSaldo(d.renovar, 1));
     if (!r.ok) return aviso(r.motivo, 'error');
     aviso('Renovada hasta el ' + fechaCorta(r.vence) + '. Se descontó ' + usd(r.precio) + '.');
     return pintar();
   }
 });
 
-document.addEventListener('submit', e => {
+document.addEventListener('submit', async e => {
   const f = e.target.closest('[data-asignar]');
   if (!f) return;
   e.preventDefault();
-  const r = asignarACliente(f.dataset.asignar, document.getElementById('aNombre').value, document.getElementById('aWa').value);
+  const r = await ocupado(f.querySelector('[type=submit]'), () =>
+    ACC.asignar(f.dataset.asignar, document.getElementById('aNombre').value, document.getElementById('aWa').value));
   if (!r.ok) return aviso(r.motivo, 'error');
   M.asignando = null;
   aviso('Asignada a ' + r.clienteFinal.nombre + '.');
@@ -348,10 +351,35 @@ document.addEventListener('input', e => {
   if (nuevo){ nuevo.focus(); nuevo.setSelectionRange(pos, pos); }
 });
 
-document.getElementById('mSalir').onclick = () => {
+document.getElementById('mSalir').onclick = async () => {
   try { sessionStorage.removeItem('streamve.mayorista'); } catch (e) {}
+  await salir();
   location.href = 'index.html#/revendedores';
 };
 
-pintar();
-cargarTasa(() => { if (M.recarga) pintarSaldo(); });
+/* ── arranque ──
+   En demo, directo. Con la base real: sesión → ¿es revendedor? → lo suyo. */
+async function iniciar(){
+  const main = document.getElementById('mMain');
+  if (!EN_VIVO){
+    pintar();
+    document.body.insertAdjacentHTML('beforeend', '<a class="modo-demo" href="?demo=0">DATOS DE PRUEBA · SALIR</a>');
+    return;
+  }
+  main.innerHTML = cargandoHTML('Revisando la sesión…');
+  const ses = await sesionActual();
+  if (!ses) return pantallaLogin(main, { rol:'PANEL DE REVENDEDOR' }, iniciar);
+  main.innerHTML = cargandoHTML('Cargando tus unidades…');
+  try { YO = await cargarMayorista(); }
+  catch (e){ main.innerHTML = vacio('No se pudo cargar', motivoDe(e)); return; }
+  if (!YO){
+    await salir();
+    return pantallaLogin(main, { rol:'PANEL DE REVENDEDOR',
+      error:'Ese usuario todavía no está aprobado como revendedor. Escribinos por WhatsApp.' }, iniciar);
+  }
+  document.body.classList.remove('sin-sesion');
+  pintar();
+}
+
+iniciar();
+cargarTasa(() => { if (M.recarga && YO) pintarSaldo(); });

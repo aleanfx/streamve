@@ -202,9 +202,19 @@ function vistaPortal(cli){
 
 /* ── render y eventos ── */
 
+/* Con la base real, el portal se trae una sola vez por código */
+let CARGADO = null;
+async function cargar(){
+  const cod = codigoURL();
+  if (!EN_VIVO || !cod) return;
+  document.getElementById('cuenta').innerHTML = '<div class="c-cargando"><i></i>Buscando tu cuenta…</div>';
+  try { CARGADO = await cargarPortal(cod); }
+  catch (e) { CARGADO = null; }
+}
+
 function pintar(){
   const cod = codigoURL();
-  const cli = cod && clientePorCodigo(cod);
+  const cli = cod && (EN_VIVO ? CARGADO : clientePorCodigo(cod));
   const main = document.getElementById('cuenta');
   document.body.classList.toggle('c-sin', !cli);
   if (!cli){
@@ -224,7 +234,7 @@ document.addEventListener('click', e => {
   /* El link de WhatsApp se abre igual; además queda la incidencia abierta
      para que aparezca en el panel de Ale. */
   if (d.reportar){
-    abrirIncidencia(d.reportar, d.causa);
+    ACC.reportar(codigoURL(), d.reportar, d.causa);
     C.reportado[d.reportar] = true; C.falla = null;
     setTimeout(pintar, 300);
   }
@@ -239,4 +249,4 @@ document.addEventListener('submit', e => {
 
 document.getElementById('cWa').innerHTML = ICONO_WA;
 document.getElementById('cWa').href = waLink('Hola, tengo una consulta sobre mi cuenta.');
-pintar();
+cargar().then(pintar);

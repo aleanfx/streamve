@@ -61,7 +61,8 @@ function aplicarRuta(){
   if (p === 'pedido'){
     const clave = S.sid + S.planK + S.meses;
     if (!S.codigo || S.codigoDe !== clave){
-      S.codigo = 'SV-' + (4100 + Math.floor(Math.random() * 5800));
+      /* Con la base real el número lo pone la base, al tocar "Enviar" */
+      S.codigo = EN_VIVO ? null : 'SV-' + (4100 + Math.floor(Math.random() * 5800));
       S.codigoDe = clave; S.enviado = false;
     }
   }
@@ -150,7 +151,7 @@ function vistaHome(){
     <button class="hero-sound" data-sonido="1" aria-label="Activar sonido"></button>
     <div class="hero-inner">
       <h1 class="display rise">NO SE<br>CAE.</h1>
-      <div><span class="stock-flag">EN STOCK AHORA · ${total} UNIDADES</span></div>
+      ${total ? `<div><span class="stock-flag">EN STOCK AHORA · ${total} UNIDADES</span></div>` : ''}
       <div class="hero-chips">
         <span class="chip">${CFG.garantiaDias} DÍAS DE GARANTÍA</span>
         <span class="chip">ENTREGA ${esc(CFG.ventanaEntrega)}</span>
@@ -311,7 +312,7 @@ function mensajePedido(){
   return [
     'Hola StreamVe, quiero hacer este pedido:',
     '',
-    '*Pedido ' + S.codigo + '*',
+    '*Pedido ' + (S.codigo || 'nuevo') + '*',
     x.nombre + ' · ' + p.etq + ' · ' + mesesTxt(S.meses),
     'Total: ' + (bin ? usd(t) + ' en USDT' : bs(t) + ' (tasa BCV ' + tasaTxt() + ')'),
     'Pago: ' + (bin ? 'Binance' : 'Pago Móvil'),
@@ -344,7 +345,7 @@ function vistaPedido(){
         <img src="${x.card || ''}" alt="${esc(x.nombre)}" onerror="this.style.visibility='hidden'">
       </div>
       <div class="pedido-res-txt">
-        <div class="kicker">PEDIDO ${esc(S.codigo)}</div>
+        <div class="kicker">${S.codigo ? 'PEDIDO ' + esc(S.codigo) : 'TU PEDIDO'}</div>
         <h1 class="display">${esc(x.nombre)}</h1>
         <dl class="pedido-lin">
           <div><dt>Acceso</dt><dd>${esc(p.etq)}</dd></div>
@@ -585,7 +586,24 @@ document.addEventListener('click', e => {
     return;
   }
   /* El link de WhatsApp sigue su curso; solo marcamos que ya se abrió */
-  if (d.enviado){ S.enviado = true; setTimeout(render, 400); return; }
+  if (d.enviado){
+    /* Con la base real, el primer envío guarda el pedido y recién ahí se
+       sabe su número. La pestaña se abre antes de esperar a la base, si no
+       el navegador la bloquea por no venir directo del toque. */
+    if (EN_VIVO && !S.codigo){
+      e.preventDefault();
+      const w = window.open('', '_blank');
+      ACC.crearPedidoWeb(S.sid, S.planK, S.meses, S.metodo).then(r => {
+        if (!r.ok){ if (w) w.close(); return aviso(r.motivo, 'error'); }
+        S.codigo = r.id; S.enviado = true;
+        const url = waLink(mensajePedido());
+        if (w) w.location.href = url; else location.href = url;
+        render();
+      });
+      return;
+    }
+    S.enviado = true; setTimeout(render, 400); return;
+  }
   if (d.ir)      return ir(d.ir);
   /* Cerrar la ficha vuelve a donde estabas, si viniste de adentro */
   if (d.cerrar)  return (S.anterior === 'home' || S.anterior === 'catalogo') ? history.back() : ir('catalogo');
@@ -672,7 +690,11 @@ $('#tabMayor').onclick     = () => ir('mayorista');
 
 montarChrome();
 alDesplazar();
-aplicarRuta();
-abrirPortalSiHaceFalta();
+/* Con la base real, el stock se pide antes de pintar (con un tope, para
+   que una base lenta no deje la tienda en blanco). */
+(EN_VIVO
+  ? Promise.race([cargarStockPublico().catch(() => {}), new Promise(r => setTimeout(r, 2500))])
+  : Promise.resolve()
+).then(() => { aplicarRuta(); abrirPortalSiHaceFalta(); });
 /* La portada no muestra bolívares: re-renderizarla reiniciaría el video */
 cargarTasa(() => { if (S.pantalla !== 'home') render(); });
