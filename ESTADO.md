@@ -26,7 +26,9 @@ Tienda de accesos a plataformas de streaming para Venezuela, con dos públicos: 
 | `paneles.js` | piezas comunes de los dos paneles: barras, estados, tablas → tarjetas en móvil |
 | `pruebas.js` | verificación de reglas: `node pruebas.js` |
 | `docs/` | brief de diseño, naming, prompts de imágenes, **`backend.md`** (cómo conectar Supabase) |
-| `supabase/esquema.sql` | la base completa: tablas, reglas como funciones, seguridad por fila. **Escrito, no ejecutado todavía** |
+| `db.js` | conexión con Supabase: carga la base en `DB` y expone `ACC.*` (cada acción = función de la base; en demo, regla local) |
+| `supabase/esquema.sql` | la base completa: tablas, reglas como funciones, seguridad por fila. **Ya ejecutado** en el proyecto `csptgybisyleixcdgvpe` |
+| `supabase/permisos.sql` | permisos de tabla que faltaban — **pendiente de correr** |
 
 Carga: `ui.js` → `catalogo.js` → `datos.js` → vista (la tienda también carga `datos.js`). Las vistas **no calculan**: consultan `datos.js`. El stock que ve el público es `stockDisponible()` / `stockPlan()`, el mismo del panel.
 
@@ -65,7 +67,7 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 - Tienda completa: portal consumidor/mayorista, hero con tráiler y sonido, rieles con flechas, tarjetas con descripción en hover, ficha de producto en dos columnas, checkout, pedido, login mayorista con collage.
 - Modelo de datos con reglas verificadas.
 - Panel de operación: Hoy, cuentas madre, suscripciones, clientes, dinero.
-- **Fase 5 preparada**: `supabase/esquema.sql` + `docs/backend.md`. Falta que Ale cree la cuenta (Claude no puede crear cuentas) y pase la *Project URL* y la clave *anon*. Nunca la `service_role`.
+- **Fase 5 — backend conectado** (2026-10-06): la web usa Supabase por defecto. Tienda lee `stock_publico` y guarda el pedido con `crear_pedido_web` al tocar Enviar; portal usa `portal`/`reportar_falla`; paneles con login (correo + contraseña, o "Crear usuario"). `?demo` en cualquier link = datos simulados (`?demo=0` para salir). Con la base vacía la tienda muestra todo AGOTADO hasta cargar cuentas madre en el panel.
 - Bloque **Vencidas sin renovar** en Hoy con LIBERAR (regla 9).
 - **Fase 4** (panel de Ale): botón **+ VENTA** fijo arriba (cliente nuevo o existente, servicio, plan, meses, cobro) que termina en **MANDAR ACCESO** (vista previa del mensaje con credenciales + link del portal); ENTREGAR y REPONER también abren MANDAR ACCESO; recargas por acreditar en Hoy; "Cobrada · renovar" en lo que vence; **+ CUENTA MADRE** con costo por perfil y margen en vivo; avisos propios en vez de `alert()`. En Hoy solo cuentan los clientes directos: las unidades de revendedores las avisa cada revendedor.
 - **Fase 3** (revendedor): saldo arriba con RECARGAR (montos, datos de pago, aviso por WhatsApp → queda "por acreditar"), RESUMEN con lo que vence en la semana, COMPRAR con mínimo 10 u. contra saldo y asignación inmediata, MIS CLIENTES (asignar unidad a un cliente, enviar acceso, avisar, renovar con saldo), MOVIMIENTOS. Mensajes al cliente final sin la marca StreamVe. En el teléfono las tablas se vuelven tarjetas.
@@ -75,7 +77,7 @@ Vista previa local: `.claude/launch.json` levanta `python -m http.server 5173`.
 
 ## Pendiente (plan por fases, una por vez)
 
-5. **Fase 5 — Backend**: Ale sigue `docs/backend.md` (10 min) y pasa URL + clave anon → Claude escribe `db.js` (llena `DB` con la misma forma), login de admin y revendedor, y conecta tienda/portal a las funciones de la base
+5. **Cerrar el backend**: (a) correr `supabase/permisos.sql` (necesita sesión en el dashboard de Supabase); (b) Ale crea su usuario en `/panel.html` → "Crear usuario" y confirma el correo; (c) `insert into admins …` con su correo; (d) **regenerar la clave `sb_secret`**, que quedó escrita en el chat (Settings → API Keys)
 6. Más adelante: recordatorios con la API de WhatsApp (~$0,011 por aviso)
 
 Antes de lanzar: poner el WhatsApp y los datos de cobro reales en `CFG` (`ui.js`). Hoy son de relleno.
@@ -93,6 +95,9 @@ Antes de lanzar: poner el WhatsApp y los datos de cobro reales en `CFG` (`ui.js`
 - **Sin `<!doctype html>` + viewport** el navegador entra en modo quirks y el celular dibuja la versión de escritorio achicada. Toda página nueva los lleva
 - La tasa en Bs se lee de `ve.dolarapi.com/v1/dolares/oficial` (BCV). `CFG.tasaBs` es solo el respaldo si la API cae
 - La portada no se re-renderiza al llegar la tasa: reiniciaría el video
+- Con la base real, `datos.js` no siembra nada: los datos llegan por `db.js`. Las reglas de lectura (estado, stock, margen) siguen siendo las de `datos.js`
+- Proyecto nuevo de Supabase = tablas sin GRANT: sin `permisos.sql` el panel da "permission denied"
+- La clave anon va en `ui.js` (es pública). La `sb_secret`/service_role NUNCA en el repo
 - Navegación: siempre `ir(pantalla)` o un `<a href="#/...">`. `aplicarRuta()` es lo único que cambia `S.pantalla`
 - En `ui.js` no va nada que dependa de `S`: lo usan también el portal y los paneles
 - Capturas del navegador de Claude: en tamaño escritorio solo devuelve un recorte; revisar escritorio midiendo con JS y lo visual en tamaño móvil
