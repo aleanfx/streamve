@@ -46,7 +46,37 @@ const mensajeAviso = s => {
 
 /* ── HOY ──────────────────────────────────────────────────────── */
 
+/* Base vacía: en vez de alarmas, los tres pasos para arrancar */
+function vistaPrimerosPasos(){
+  return `
+  <section class="arranque">
+    <div class="kicker">PRIMEROS PASOS</div>
+    <h1 class="display">Tu panel está listo.<br>Falta tu primera cuenta.</h1>
+    <p>Todo lo que se vende sale de las cuentas que le comprás al proveedor. Cuando cargues la primera, la tienda deja de decir "agotado".</p>
+    <ol class="arranque-pasos">
+      <li>
+        <i>1</i>
+        <div><b>Comprale una cuenta al proveedor</b>
+        <span>Por ejemplo, un Netflix de 4 pantallas en VirtuMall o Gudfy. Te dan un correo y una clave.</span></div>
+        <button class="acc pri" data-cajon="madre" data-sid="nx">CARGAR CUENTA</button>
+      </li>
+      <li>
+        <i>2</i>
+        <div><b>Vendé una pantalla</b>
+        <span>Cuando un cliente te pague por WhatsApp, tocá + VENTA arriba. O el cliente pide desde la tienda y te aparece acá.</span></div>
+      </li>
+      <li>
+        <i>3</i>
+        <div><b>Mandale el acceso</b>
+        <span>Al vender, el panel te arma el mensaje con la clave y su link personal. Un toque y se envía por WhatsApp.</span></div>
+      </li>
+    </ol>
+    <a class="arranque-demo" href="?demo" target="_blank" rel="noopener">¿Querés ver cómo se ve con clientes? Abrí la versión de prueba →</a>
+  </section>`;
+}
+
 function vistaHoy(){
+  if (!DB.cuentasMadre.length && !DB.suscripciones.length) return vistaPrimerosPasos();
   const pend   = pedidosPendientes();
   const hoyMan = directos(vencenEntre(0, 1));
   const semana = directos(vencenEntre(0, 7));

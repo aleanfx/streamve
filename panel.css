@@ -434,3 +434,26 @@ body.sin-sesion .pnav,body.sin-sesion .saldo,body.sin-sesion .pbar-venta,body.si
 }
 .login-p-ok{margin:0;color:var(--vive);font-size:13.5px;line-height:1.5}
 button.login-p-demo{background:none;border:0;padding:0;cursor:pointer}
+
+/* ── primeros pasos (base vacía) ── */
+.arranque{max-width:760px;padding:clamp(20px,4vw,48px) 0}
+.arranque h1{margin:12px 0 0;font-size:clamp(32px,4.4vw,54px)}
+.arranque > p{margin:16px 0 0;color:var(--mute-2);font-size:15px;max-width:52ch;line-height:1.55}
+.arranque-pasos{list-style:none;margin:30px 0 0;padding:0;border-top:1px solid var(--line-2)}
+.arranque-pasos li{
+  display:grid;grid-template-columns:38px 1fr auto;gap:16px;align-items:center;
+  padding:20px 0;border-bottom:1px solid var(--line);
+}
+.arranque-pasos i{
+  width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-style:normal;
+  font-weight:800;border:1.5px solid var(--accent);
+}
+.arranque-pasos b{display:block;font-size:17px;font-weight:800}
+.arranque-pasos span{display:block;font-size:13.5px;color:var(--mute);margin-top:4px;line-height:1.5}
+.arranque-pasos .acc{padding:11px 16px}
+@media (max-width:600px){
+  .arranque-pasos li{grid-template-columns:38px 1fr}
+  .arranque-pasos .acc{grid-column:2;justify-self:start}
+}
+.arranque-demo{display:inline-block;margin-top:24px;font-size:13px;color:var(--mute-2);text-decoration:none}
+.arranque-demo:hover{color:var(--ink)}
