@@ -516,17 +516,29 @@ function historialDe(clienteId){
   return ev.sort((a, b) => aFecha(b.fecha) - aFecha(a.fecha));
 }
 
-/* Dinero del mes en curso */
+/* Lo que cuesta por mes la parte de cuenta madre que ocupa una suscripción */
+function costoMensualDe(s){
+  const p = DB.perfiles.find(x => x.id === s.perfilId);
+  const m = p && DB.cuentasMadre.find(x => x.id === p.cuentaMadreId);
+  if (!m) return 0;
+  return s.planClave === 'completa' ? m.costo : m.costo / m.capacidad;
+}
+
+/* Dinero del mes en curso: ventas nuevas y renovaciones cobradas este mes.
+   La ganancia descuenta lo que cuesta la cuenta madre por cada mes vendido. */
 function resumenDinero(){
   const mes = HOY.getMonth(), anio = HOY.getFullYear();
-  const delMes = DB.suscripciones.filter(s => {
-    const f = aFecha(s.inicio);
-    return f.getMonth() === mes && f.getFullYear() === anio;
+  const enMes = f => { const d = aFecha(f); return d.getMonth() === mes && d.getFullYear() === anio; };
+  let ingreso = 0, margen = 0, ventas = 0;
+  DB.suscripciones.forEach(s => {
+    if (enMes(s.inicio)){ ingreso += s.precio; margen += s.precio - costoMensualDe(s) * (s.meses || 1); ventas++; }
+    (s.renovaciones || []).forEach(r => {
+      if (!enMes(r.fecha)) return;
+      ingreso += r.precio; margen += r.precio - costoMensualDe(s) * (r.meses || 1); ventas++;
+    });
   });
-  const ingreso = delMes.reduce((t, s) => t + s.precio, 0);
-  const margen  = delMes.reduce((t, s) => t + margenDe(s), 0);
   const costoMadres = DB.cuentasMadre.reduce((t, m) => t + m.costo, 0);
-  return { ingreso, margen, costoMadres, ventas: delMes.length };
+  return { ingreso, margen, costoMadres, ventas };
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -1,36 +1,39 @@
 /* StreamVe — panel de operación (Ale).
  *
- * Nada de lo que se ve acá se calcula acá: todo sale de las reglas de
- * datos.js. Este archivo decide cómo se muestra y qué acción tiene cada
- * fila. La venta casi siempre entra por WhatsApp: + VENTA la registra en
- * diez segundos y MANDAR ACCESO le devuelve al cliente su clave y su link.
+ * Pensado como una bandeja: "Hoy" es una sola lista de cosas para hacer,
+ * escritas como frases, con un botón cada una. Lo demás (clientes, cuentas
+ * del proveedor, plata) se consulta cuando hace falta.
  *
- * Depende de: ui.js, catalogo.js, datos.js, paneles.js
+ * Nada de lo que se ve acá se calcula acá: todo sale de las reglas de
+ * datos.js, y toda acción pasa por ACC (db.js).
+ *
+ * Depende de: ui.js, catalogo.js, datos.js, db.js, paneles.js
  */
 
 const P = {
-  vista:'hoy', filtro:'todas', busca:'', cajon:null,
+  vista:'hoy', filtro:'todos', busca:'', cajon:null, abiertos:{},
   venta:{ modo:'nuevo', clienteId:null, nombre:'', wa:'', busca:'', sid:'nx', planK:'pantalla', meses:1, metodo:'binance' },
   madre:{ sid:'nx', correo:'', clave:'', capacidad:4, costo:'', proveedor:'', vence:'' }
 };
 
 const VISTAS = [
   ['hoy',      'HOY'],
-  ['madres',   'CUENTAS MADRE'],
-  ['susc',     'SUSCRIPCIONES'],
   ['clientes', 'CLIENTES'],
-  ['dinero',   'DINERO']
+  ['cuentas',  'MIS CUENTAS'],
+  ['plata',    'PLATA']
 ];
 
-const cliente = id => DB.clientes.find(c => c.id === id) || { nombre:'—', whatsapp:CFG.whatsapp, codigoAcceso:'' };
+const cliente = id => DB.clientes.find(c => c.id === id) || { nombre:'—', whatsapp:CFG.whatsapp, codigoAcceso:'', tipo:'personal' };
 const nombreCliente = id => cliente(id).nombre;
 const primer = n => String(n).split(' ')[0];
 const waCliente = (clienteId, texto) => waLink(texto, cliente(clienteId).whatsapp);
+const iniciales = n => String(n).split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
 
 /* A Ale le toca avisar a sus clientes directos. Las unidades de los
    revendedores las avisa cada revendedor desde su panel. */
 const directos = lista => lista.filter(s => cliente(s.clienteId).tipo !== 'mayorista');
 const METODO = { binance:'Binance', pagoMovil:'Pago Móvil', whatsapp:'WhatsApp', saldo:'Saldo', otro:'Otro' };
+const hace = f => { const d = diasEntre(f, HOY); return d <= 0 ? 'hoy' : d === 1 ? 'desde ayer' : 'hace ' + d + ' días'; };
 
 /* Lo que recibe el cliente al entregarle: acceso + su link personal */
 function mensajeAcceso(s){
@@ -44,7 +47,34 @@ const mensajeAviso = s => {
     '. ¿Lo renovamos? Seguís con la misma clave.\n\nTu cuenta: ' + linkPortal(cliente(s.clienteId));
 };
 
-/* ── HOY ──────────────────────────────────────────────────────── */
+/* ── íconos: trazo fino, del color del texto ── */
+const ICO = {
+  pago:     '<circle cx="12" cy="12" r="9"/><path d="M14.6 9.4c-.4-.9-1.4-1.4-2.6-1.4-1.5 0-2.6.8-2.6 2s1.1 1.7 2.6 2 2.6.8 2.6 2-1.1 2-2.6 2c-1.2 0-2.2-.6-2.6-1.5M12 6.4V8M12 16v1.6"/>',
+  alerta:   '<path d="M12 3.5 2.5 20h19L12 3.5z"/><path d="M12 10v4.2M12 17h.01"/>',
+  reloj:    '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>',
+  saldo:    '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M15.5 14.5h2"/>',
+  renovar:  '<path d="M19.5 11A7.5 7.5 0 0 0 5.6 7.6M4.5 13a7.5 7.5 0 0 0 13.9 3.4"/><path d="M5 4v3.8h3.8M19 20v-3.8h-3.8"/>',
+  pantalla: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 21h7M12 17v4"/>',
+  caja:     '<path d="M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16V8z"/><path d="M3.5 8 12 12.5 20.5 8M12 12.5v8"/>',
+  check:    '<path d="M5 12.5 9.5 17 19 7"/>',
+  lupa:     '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'
+};
+const ico = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
+
+/* ── avisos ya mandados hoy ──
+   Avisar abre WhatsApp: la base no se entera. Se recuerda en este equipo
+   para que la tarea pase a "esperando que pague" y no ensucie la lista. */
+const CLAVE_AVISADOS = 'streamve.avisados';
+const leerAvisados = () => { try { return JSON.parse(localStorage.getItem(CLAVE_AVISADOS)) || {}; } catch (e) { return {}; } };
+const avisadoHoy = sid => leerAvisados()[sid] === dia(HOY);
+function marcarAvisado(sid){
+  const a = leerAvisados();
+  Object.keys(a).forEach(k => { if (a[k] !== dia(HOY)) delete a[k]; });
+  a[sid] = dia(HOY);
+  try { localStorage.setItem(CLAVE_AVISADOS, JSON.stringify(a)); } catch (e) {}
+}
+
+/* ═══ HOY ═══════════════════════════════════════════════════════ */
 
 /* Base vacía: en vez de alarmas, los tres pasos para arrancar */
 function vistaPrimerosPasos(){
@@ -75,298 +105,388 @@ function vistaPrimerosPasos(){
   </section>`;
 }
 
+/* Clientes vivos adentro de una cuenta madre */
+const clientesEnMadre = m => {
+  const ids = perfilesDe(m).map(p => p.id);
+  return DB.suscripciones.filter(s => s.estado !== 'cancelada' && estadoSuscripcion(s) !== 'vencida' &&
+    (s.perfilIds || [s.perfilId]).some(id => ids.includes(id)));
+};
+
+/* Todo lo que hay que hacer, como frases, de lo más urgente a lo menos.
+   prio: 1 plata esperando · 2 algo no anda · 3 recargas · 4 vencimientos ·
+   5 renovar con el proveedor · 6 pantallas para recuperar · 7 stock · 9 ya hecho */
+function tareas(){
+  const t = [];
+
+  pedidosPendientes().forEach(p => {
+    const it = p.items[0], sv = servPorId(it.servicioId);
+    const sin = stockPlan(it.servicioId, it.planClave) < it.cantidad;
+    const espera = p.estado === 'esperando';
+    const quien = p.clienteId ? primer(nombreCliente(p.clienteId)) : '';
+    t.push({
+      prio: espera ? 1.5 : 1, tono: espera ? 'ambar' : 'rojo', icono:'pago',
+      titulo: espera ? 'Pedido de ' + sv.nombre + ' desde la tienda'
+                     : (quien ? quien + ' te pagó ' : 'Te pagaron ') + sv.nombre,
+      sub: [p.id, etiquetaPlan(it.servicioId, it.planClave) + (it.cantidad > 1 ? ' × ' + it.cantidad : '') + (it.meses === 12 ? ' · 12 meses' : ''),
+            usd(p.total), espera ? 'esperá la captura en WhatsApp' : (METODO[p.metodoPago] || '') + (p.referencia ? ' ' + p.referencia : '')]
+           .filter(Boolean).join(' · '),
+      nota: sin ? 'No tenés pantallas libres de ' + sv.nombre + ': cargá una cuenta primero.' : '',
+      boton: sin ? { txt:'Cargar cuenta', attr:`data-cajon="madre" data-sid="${it.servicioId}"` }
+                 : { txt:'Entregar', attr:`data-entregar="${p.id}"` },
+      extra: espera ? { txt:'Descartar', attr:`data-descartar="${p.id}"` } : null
+    });
+  });
+
+  incidenciasAbiertas().forEach(i => {
+    const s = DB.suscripciones.find(x => x.id === i.suscripcionId);
+    if (!s) return;
+    const sv = servicioDeSuscripcion(s) || servPorId('');
+    const sin = stockPlan(sv.id, s.planClave) === 0;
+    t.push({
+      prio:2, tono:'rojo', icono:'alerta',
+      titulo: 'A ' + primer(nombreCliente(s.clienteId)) + ' no le funciona ' + sv.nombre,
+      sub: i.causa + ' · ' + hace(i.abierta),
+      nota: sin ? 'No tenés pantallas libres de ' + sv.nombre + ' para reponer.' : '',
+      boton: sin ? { txt:'Cargar cuenta', attr:`data-cajon="madre" data-sid="${sv.id}"` }
+                 : { txt:'Darle otra pantalla', attr:`data-reponer="${s.id}"` },
+      extra: { txt:'Escribirle', href: waCliente(s.clienteId, 'Hola ' + primer(nombreCliente(s.clienteId)) + ', ya estoy viendo lo de tu ' + sv.nombre + '.') }
+    });
+  });
+
+  recargasPendientes().forEach(m => t.push({
+    prio:3, tono:'ambar', icono:'saldo',
+    titulo: nombreCliente(m.clienteId) + ' recargó ' + usd(m.monto),
+    sub: 'Por ' + m.referencia + ' · revisá la captura en WhatsApp y acreditá',
+    boton: { txt:'Acreditar', attr:`data-acreditar="${m.id}"` }
+  }));
+
+  /* Vencen hoy o mañana, y las que vencieron hace poco: las que más renuevan */
+  directos(vencenEntre(-OP.graciaDias, 1))
+    .sort((a, b) => { const da = diasRestantes(a), db = diasRestantes(b);
+      return (da < 0) - (db < 0) || (da >= 0 ? da - db : db - da); })
+    .forEach(s => {
+    const sv = servicioDeSuscripcion(s) || servPorId('');
+    const d = diasRestantes(s), yo = primer(nombreCliente(s.clienteId));
+    const avisado = avisadoHoy(s.id);
+    t.push({
+      prio: avisado ? 9 : 4, tono:'ambar', icono:'reloj', hecho: avisado, quien: yo,
+      titulo: d >= 0 ? 'A ' + yo + ' se le vence ' + sv.nombre + (d === 0 ? ' hoy' : ' mañana')
+                     : 'A ' + yo + ' se le venció ' + sv.nombre + (d === -1 ? ' ayer' : ' hace ' + Math.abs(d) + ' días'),
+      sub: avisado ? 'Ya le avisaste hoy · cuando te pague, tocá Ya pagó' : 'Avisale para que renueve con la misma clave',
+      boton: avisado ? { txt:'Ya pagó', attr:`data-renovar="${s.id}"` }
+                     : { txt:'Avisar', href: waCliente(s.clienteId, mensajeAviso(s)), attr:`data-avisar="${s.id}"` },
+      extra: avisado ? null : { txt:'Ya pagó', attr:`data-renovar="${s.id}"` }
+    });
+  });
+
+  /* Cuentas del proveedor que vencen en 5 días o menos y tienen gente adentro */
+  DB.cuentasMadre.forEach(m => {
+    const d = diasEntre(HOY, m.vence);
+    const n = clientesEnMadre(m).length;
+    if (d > 5 || !n) return;
+    const sv = servPorId(m.servicioId);
+    t.push({
+      prio:5, tono: d < 0 ? 'rojo' : 'gris', icono:'renovar',
+      titulo: d < 0 ? 'Tu ' + sv.nombre + ' del proveedor venció: renovalo ya'
+                    : 'Renová tu ' + sv.nombre + ' con el proveedor antes del ' + fechaCorta(m.vence),
+      sub: (m.proveedor || 'Sin proveedor') + ' · ' + n + (n === 1 ? ' cliente adentro' : ' clientes adentro'),
+      boton: { txt:'Ya la renové', attr:`data-renovar-madre="${m.id}"` }
+    });
+  });
+
+  paraLiberar().forEach(s => {
+    const sv = servicioDeSuscripcion(s) || servPorId('');
+    const a = accesoDe(s) || {};
+    const c = cliente(s.clienteId);
+    t.push({
+      prio:6, tono:'gris', icono:'pantalla', quien: primer(c.nombre),
+      titulo: primer(c.nombre) + ' no renovó ' + sv.nombre + (c.tipo === 'mayorista' ? ' (revendedor)' : ''),
+      sub: 'Venció ' + comoFalta(s.vence).replace('venció ', '') + (a.pin ? ' · cambiale el PIN ' + a.pin + ' a ' + a.perfil : '') + ' y la pantalla queda para vender',
+      boton: { txt:'Recuperar pantalla', attr:`data-liberar="${s.id}"` },
+      extra: { txt:'Último aviso', href: waCliente(s.clienteId, mensajeAviso(s)) }
+    });
+  });
+
+  CAT.forEach(x => {
+    if (stockDisponible(x.id) > 0) return;
+    const vivas = DB.suscripciones.filter(s => { const sv = servicioDeSuscripcion(s);
+      return sv && sv.id === x.id && s.estado !== 'cancelada' && estadoSuscripcion(s) !== 'vencida'; }).length;
+    if (!vivas) return;
+    t.push({
+      prio:7, tono:'gris', icono:'caja',
+      titulo: 'Te quedaste sin pantallas de ' + x.nombre,
+      sub: 'Tenés ' + vivas + (vivas === 1 ? ' cliente' : ' clientes') + ' y nada para reponer si una se cae',
+      boton: { txt:'Cargar cuenta', attr:`data-cajon="madre" data-sid="${x.id}"` }
+    });
+  });
+
+  return t.sort((a, b) => a.prio - b.prio);
+}
+
+function tareaHTML(k){
+  const btn = (b, pri) => !b ? '' : b.href
+    ? `<a class="acc ${pri ? 'pri' : 'leve'}" href="${b.href}" target="_blank" rel="noopener" ${b.attr || ''}>${esc(b.txt)}</a>`
+    : `<button class="acc ${pri ? 'pri' : 'leve'}" ${b.attr}>${esc(b.txt)}</button>`;
+  return `<li class="tarea t-${k.tono}${k.hecho ? ' hecha' : ''}">
+    <span class="tarea-ico">${ico(k.hecho ? 'check' : k.icono)}</span>
+    <div class="tarea-txt">
+      <b>${esc(k.titulo)}</b>
+      <span>${esc(k.sub)}</span>
+      ${k.nota ? `<em>${esc(k.nota)}</em>` : ''}
+    </div>
+    <div class="tarea-acc">${btn(k.extra, false)}${btn(k.boton, !k.hecho && !k.grupo)}</div>
+  </li>`;
+}
+
+/* Tres o más del mismo tipo se juntan en una línea que se abre al tocarla:
+   siete avisos seguidos no son siete cosas distintas, es una tarea. */
+const GRUPOS = {
+  reloj:    n => ({ titulo: 'Avisale a ' + n + ' clientes que se les vence', sub: 'Cada aviso abre WhatsApp con el mensaje listo' }),
+  pantalla: n => ({ titulo: n + ' clientes no renovaron', sub: 'Recuperá esas pantallas para volver a venderlas' })
+};
+function bandeja(lista){
+  const filas = [], hechos = {};
+  let pendientes = 0;
+  lista.forEach(k => {
+    const hermanos = !k.hecho && GRUPOS[k.icono] ? lista.filter(x => x.icono === k.icono && !x.hecho) : [];
+    if (hermanos.length < 3){ filas.push(tareaHTML(k)); if (!k.hecho) pendientes++; return; }
+    if (hechos[k.icono]) return;
+    hechos[k.icono] = true; pendientes++;
+    const g = GRUPOS[k.icono](hermanos.length), abierto = !!P.abiertos[k.icono];
+    const nombres = hermanos.slice(0, 3).map(x => x.quien).join(', ') + (hermanos.length > 3 ? ' y ' + (hermanos.length - 3) + ' más' : '');
+    filas.push(tareaHTML({ grupo: true, tono: k.tono, icono: k.icono, titulo: g.titulo, sub: nombres + ' · ' + g.sub,
+      boton: { txt: abierto ? 'Cerrar' : 'Ver los ' + hermanos.length, attr: `data-abrir-grupo="${k.icono}"` } }) +
+      (abierto ? `<li class="tarea-grupo"><ul class="tareas">${hermanos.map(tareaHTML).join('')}</ul></li>` : ''));
+  });
+  return { html: filas.join(''), pendientes };
+}
+
+/* Buscar es lo primero que se necesita cuando alguien escribe por WhatsApp */
+function resultadosBusqueda(){
+  const q = P.busca.trim().toLowerCase(), qd = q.replace(/\D/g, '');
+  const clis = DB.clientes.filter(c => c.nombre.toLowerCase().includes(q) ||
+    (qd.length >= 3 && c.whatsapp.includes(qd))).slice(0, 8);
+  const peds = DB.pedidos.filter(p => p.id.toLowerCase().includes(q)).slice(0, 5);
+  if (!clis.length && !peds.length)
+    return `<div class="vacio"><b>Nada con "${esc(P.busca)}"</b>Probá con otra parte del nombre o del número.</div>`;
+  return `<ul class="lista-cli-p">
+    ${peds.map(p => {
+      const it = p.items[0], sv = servPorId(it.servicioId);
+      const pendiente = pedidosPendientes().includes(p);
+      return `<li><button class="cli-fila" ${pendiente ? `data-entregar="${p.id}"` : p.clienteId ? `data-cliente-ver="${p.clienteId}"` : ''}>
+        <span class="avatar">${ico('pago')}</span>
+        <span class="cli-txt"><b>Pedido ${esc(p.id)}</b><span>${esc(sv.nombre)} · ${usd(p.total)} · ${p.clienteId ? esc(nombreCliente(p.clienteId)) : 'llegó por la web'}</span></span>
+        <span class="cli-estado">${pendiente ? '<i class="tono-rojo">por entregar</i>' : esc(p.estado)}</span>
+      </button></li>`;
+    }).join('')}
+    ${clis.map(filaCliente).join('')}
+  </ul>`;
+}
+
 function vistaHoy(){
   if (!DB.cuentasMadre.length && !DB.suscripciones.length) return vistaPrimerosPasos();
-  const pend   = pedidosPendientes();
-  const hoyMan = directos(vencenEntre(0, 1));
-  const semana = directos(vencenEntre(0, 7));
-  const inc    = incidenciasAbiertas();
-  const rec    = recargasPendientes();
-  const riesgo = madresEnRiesgo();
-  const sinRepuesto = CAT.filter(x => stockDisponible(x.id) === 0);
-  const liberar_ = paraLiberar();
+  const lista = tareas();
+  const b = bandeja(lista), pendientes = b.pendientes;
+  const r = resumenDinero();
+  const semana = directos(vencenEntre(2, 7)).length;
 
-  return `
-  <div class="alertas">
-    <button class="alerta ${pend.length ? 'urgente' : 'bien'}" data-ver="pedidos">
-      <u>POR ENTREGAR</u><b>${pend.length}</b><span>pedidos esperando</span>
-    </button>
-    <button class="alerta ${inc.length ? 'urgente' : 'bien'}" data-ver="incidencias">
-      <u>INCIDENCIAS</u><b>${inc.length}</b><span>cuentas que no andan</span>
-    </button>
-    <button class="alerta ${hoyMan.length ? 'ojo' : 'bien'}" data-ver="vencen">
-      <u>VENCE HOY Y MAÑANA</u><b>${hoyMan.length}</b><span>hay que avisar</span>
-    </button>
-    <button class="alerta ${rec.length ? 'ojo' : 'bien'}" data-ver="recargas">
-      <u>RECARGAS</u><b>${rec.length}</b><span>por acreditar</span>
-    </button>
-    <button class="alerta ${(riesgo.length || sinRepuesto.length) ? 'ojo' : 'bien'}" data-ir="madres">
-      <u>INVENTARIO</u><b>${sinRepuesto.length + riesgo.length}</b><span>${sinRepuesto.length} sin stock · ${riesgo.length} por renovar</span>
-    </button>
+  return `<div class="angosto">
+  <div class="hoy-cab">
+    <h1>${pendientes ? 'Hoy tenés ' + pendientes + (pendientes === 1 ? ' cosa' : ' cosas') + ' para hacer' : 'Todo al día'}</h1>
+    <span class="hoy-plata">Este mes: <b>${usd(r.ingreso)}</b> vendido · <b>${usd(r.margen)}</b> de ganancia</span>
   </div>
+  <label class="buscar">${ico('lupa')}<input id="pBusca" placeholder="Buscar cliente, teléfono o pedido SV-…" value="${esc(P.busca)}" autocomplete="off"></label>
 
-  ${sinRepuesto.length ? `
-  <div class="bloque">
-    <div class="bloque-tit">
-      <h2>Sin stock para reponer</h2>
-      <span>si una de estas se cae, no hay con qué reemplazarla</span>
-    </div>
-    <div class="tabla-cont"><table class="t">
-      <thead><tr><th>Servicio</th><th>En riesgo</th><th></th></tr></thead>
-      <tbody>${sinRepuesto.map(x => {
-        const activas = DB.suscripciones.filter(s => {
-          const sv = servicioDeSuscripcion(s);
-          return sv && sv.id === x.id && estadoSuscripcion(s) !== 'vencida';
-        }).length;
-        return `<tr>
-          <td><span class="prin">${punto(x.id)}${esc(x.nombre)}</span></td>
-          <td class="num sub">${activas} suscripciones vivas</td>
-          <td><button class="acc pri" data-cajon="madre" data-sid="${x.id}">+ CUENTA MADRE</button></td>
-        </tr>`;
-      }).join('')}</tbody></table></div>
-  </div>` : ''}
+  ${P.busca.trim() ? resultadosBusqueda()
+    : lista.length ? `<ul class="tareas">${b.html}</ul>`
+    : `<div class="al-dia">${ico('check')}<b>No hay nada pendiente</b><span>Cuando alguien pague, se le venza algo o algo no ande, te aparece acá.</span></div>`}
 
-  <div class="bloque" id="pedidos">
-    <div class="bloque-tit"><h2>Pedidos por entregar</h2><span>${pend.length} esperando</span>
-      <span class="der">verificá el pago en el chat antes de entregar</span></div>
-    ${pend.length ? `<div class="tabla-cont"><table class="t">
-      <thead><tr><th>Pedido</th><th>Cliente</th><th>Servicio</th><th>Pago</th><th>Estado</th><th></th></tr></thead>
-      <tbody>${pend.map(p => {
-        const it = p.items[0], sv = servPorId(it.servicioId);
-        const sin = stockPlan(it.servicioId, it.planClave) < it.cantidad;
-        return `<tr>
-          <td><span class="prin">${esc(p.id)}</span><div class="sub">${fechaCorta(p.creado)}</div></td>
-          <td>${p.clienteId ? esc(nombreCliente(p.clienteId)) : '<span class="sub">llegó por la web</span>'}</td>
-          <td>${punto(it.servicioId)}${esc(sv.nombre)}<div class="sub">${esc(etiquetaPlan(it.servicioId, it.planClave))}${it.cantidad > 1 ? ' × ' + it.cantidad : ''}${it.meses === 12 ? ' · 12 meses' : ''}</div></td>
-          <td class="num">${usd(p.total)}<div class="sub">${METODO[p.metodoPago] || esc(p.metodoPago)}${p.referencia ? ' · ' + esc(p.referencia) : ''}</div></td>
-          <td><span class="chip-e ${p.estado === 'esperando' ? 'e-porVencer' : 'e-neutro'}">${p.estado === 'esperando' ? 'SIN CAPTURA' : p.estado.toUpperCase()}</span></td>
-          <td class="acciones">${sin ? `<button class="acc" data-cajon="madre" data-sid="${it.servicioId}">SIN STOCK · + CUENTA</button>`
-                    : `<button class="acc pri" data-entregar="${p.id}">ENTREGAR</button>`}
-              ${p.estado === 'esperando' ? `<button class="acc" data-descartar="${p.id}">DESCARTAR</button>` : ''}</td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`
-      : vacio('Nada pendiente', 'Todos los pedidos están entregados.')}
-  </div>
+  ${semana ? `<button class="mas-tarde" data-ir="clientes" data-filtro-ir="semana">En los próximos 7 días vencen ${semana} más →</button>` : ''}
 
-  <div class="bloque" id="incidencias">
-    <div class="bloque-tit"><h2>Incidencias abiertas</h2><span>${inc.length} sin resolver</span>
-      <span class="der">reponer no mueve la fecha de vencimiento</span></div>
-    ${inc.length ? `<div class="tabla-cont"><table class="t">
-      <thead><tr><th>Cliente</th><th>Servicio</th><th>Qué pasó</th><th>Desde</th><th></th></tr></thead>
-      <tbody>${inc.map(i => {
-        const s = DB.suscripciones.find(x => x.id === i.suscripcionId);
-        if (!s) return '';
-        const sv = servicioDeSuscripcion(s) || servPorId('');
-        return `<tr>
-          <td><span class="prin">${esc(nombreCliente(s.clienteId))}</span></td>
-          <td>${punto(sv.id)}${esc(sv.nombre)}</td>
-          <td>${esc(i.causa)}</td>
-          <td class="num sub">${i.abierta === dia(HOY) ? 'hoy' : 'hace ' + Math.abs(diasEntre(HOY, i.abierta)) + ' d'}</td>
-          <td><button class="acc pri" data-reponer="${s.id}">REPONER</button></td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`
-      : vacio('Sin incidencias', 'Nada se cayó.')}
-  </div>
-
-  <div class="bloque" id="recargas">
-    <div class="bloque-tit"><h2>Recargas por acreditar</h2><span>${rec.length} esperando</span>
-      <span class="der">el saldo cuenta recién cuando lo acreditás</span></div>
-    ${rec.length ? `<div class="tabla-cont"><table class="t">
-      <thead><tr><th>Revendedor</th><th>Método</th><th>Fecha</th><th>Monto</th><th></th></tr></thead>
-      <tbody>${rec.map(m => `<tr>
-        <td><span class="prin">${esc(nombreCliente(m.clienteId))}</span><div class="sub">saldo actual ${usd(saldoDe(m.clienteId))}</div></td>
-        <td class="sub">${esc(m.referencia)}</td>
-        <td class="num sub">${fechaCorta(m.fecha)}</td>
-        <td class="num"><b>${usd(m.monto)}</b></td>
-        <td><button class="acc pri" data-acreditar="${m.id}">ACREDITAR</button></td>
-      </tr>`).join('')}</tbody></table></div>`
-      : vacio('Nada por acreditar')}
-  </div>
-
-  ${liberar_.length ? `
-  <div class="bloque" id="liberar">
-    <div class="bloque-tit"><h2>Vencidas sin renovar</h2><span>${liberar_.length} hace más de ${OP.graciaDias} días</span>
-      <span class="der">al liberar, cambiale el PIN al perfil antes de revenderlo</span></div>
-    <div class="tabla-cont"><table class="t">
-      <thead><tr><th>Cliente</th><th>Servicio</th><th>Venció</th><th>PIN a cambiar</th><th></th></tr></thead>
-      <tbody>${liberar_.map(s => {
-        const sv = servicioDeSuscripcion(s) || servPorId('');
-        const a = accesoDe(s) || {};
-        return `<tr>
-          <td><span class="prin">${esc(nombreCliente(s.clienteId))}</span></td>
-          <td>${punto(sv.id)}${esc(sv.nombre)}<div class="sub">${esc(a.correo || '')}</div></td>
-          <td class="num sub">${esc(comoFalta(s.vence))}</td>
-          <td class="num">${esc(a.perfil || '')}${a.pin ? ' · ' + esc(a.pin) : ''}</td>
-          <td class="acciones">
-            <a class="acc" target="_blank" rel="noopener" href="${waCliente(s.clienteId, mensajeAviso(s))}">ÚLTIMO AVISO</a>
-            <button class="acc pri" data-liberar="${s.id}">LIBERAR</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody></table></div>
-  </div>` : ''}
-
-  <div class="bloque" id="vencen">
-    <div class="bloque-tit"><h2>Vence esta semana</h2><span>${semana.length} suscripciones</span>
-      <span class="der">avisar antes evita perder al cliente</span></div>
-    ${semana.length ? `<div class="tabla-cont"><table class="t">
-      <thead><tr><th>Cliente</th><th>Servicio</th><th>Tiempo</th><th>Estado</th><th></th></tr></thead>
-      <tbody>${semana.map(s => {
-        const sv = servicioDeSuscripcion(s) || servPorId('');
-        const c = cliente(s.clienteId);
-        return `<tr>
-          <td><span class="prin">${esc(c.nombre)}</span></td>
-          <td>${punto(sv.id)}${esc(sv.nombre)}</td>
-          <td>${barraTiempo(s)}</td>
-          <td>${chipEstado(estadoSuscripcion(s))}</td>
-          <td class="acciones">
-            <a class="acc" target="_blank" rel="noopener" href="${waCliente(s.clienteId, mensajeAviso(s))}">AVISAR</a>
-            <button class="acc" data-renovar="${s.id}">COBRADA · RENOVAR</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`
-      : vacio('Ninguna vence esta semana', 'Podés dormir tranquilo.')}
-  </div>`;
+  <div class="libres">
+    <span>Pantallas libres para vender</span>
+    <div>${CAT.map(x => { const n = stockDisponible(x.id); return n
+      ? `<i>${esc(x.nombre)} <b>${n}</b></i>`
+      : `<button class="sin" data-cajon="madre" data-sid="${x.id}">${esc(x.nombre)} agotado · cargar</button>`; }).join('')}</div>
+  </div></div>`;
 }
 
-/* ── CUENTAS MADRE ────────────────────────────────────────────── */
+/* ═══ CLIENTES ══════════════════════════════════════════════════ */
 
-function vistaMadres(){
-  const madres = DB.cuentasMadre.slice().sort((a, b) => aFecha(a.vence) - aFecha(b.vence));
-  const riesgo = madresEnRiesgo().map(m => m.id);
-
-  return `
-  <div class="bloque">
-    <div class="bloque-tit">
-      <h2>Cuentas madre</h2>
-      <span>${madres.length} · costo total ${usd(madres.reduce((t, m) => t + m.costo, 0))}</span>
-      <button class="acc pri der-btn" data-cajon="madre">+ CUENTA MADRE</button>
-    </div>
-    <div class="tabla-cont"><table class="t">
-      <thead><tr><th>Servicio</th><th>Proveedor</th><th>Capacidad</th><th>Costo</th><th>Por perfil</th><th>Vence</th><th></th></tr></thead>
-      <tbody>${madres.map(m => {
-        const sv = servPorId(m.servicioId);
-        const d = diasEntre(HOY, m.vence);
-        return `<tr>
-          <td><span class="prin">${punto(m.servicioId)}${esc(sv.nombre)}</span><div class="sub">${esc(m.correo)}</div></td>
-          <td class="sub">${esc(m.proveedor)}</td>
-          <td>${barraCapacidad(m)}</td>
-          <td class="num">${usd(m.costo)}</td>
-          <td class="num">${usd(m.costo / m.capacidad)}</td>
-          <td>
-            <span class="chip-e ${d < 0 ? 'e-vencida' : d <= 5 ? 'e-porVencer' : 'e-neutro'}">${comoFalta(m.vence)}</span>
-            ${riesgo.includes(m.id) ? '<div class="sub" style="color:var(--muere)">clientes la sobreviven</div>' : ''}
-          </td>
-          <td class="acciones">
-            <button class="acc" data-copiar="${esc(m.correo + '\n' + m.clave)}">COPIAR ACCESO</button>
-            <button class="acc ${riesgo.includes(m.id) ? 'pri' : ''}" data-renovar-madre="${m.id}">RENOVAR</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody></table></div>
-  </div>`;
+/* El estado de un cliente es el de su acceso que vence primero */
+function resumenCliente(c){
+  const ss = suscripcionesDe(c.id).filter(s => s.estado !== 'cancelada');
+  const vivas = ss.filter(s => estadoSuscripcion(s) !== 'vencida').sort((a, b) => aFecha(a.vence) - aFecha(b.vence));
+  const prox = vivas[0];
+  return { ss, vivas, prox, dias: prox ? diasRestantes(prox) : null, vencidas: ss.length - vivas.length };
 }
 
-/* ── SUSCRIPCIONES ────────────────────────────────────────────── */
-
-function vistaSusc(){
-  const filtros = [['todas','TODAS'],['porVencer','POR VENCER'],['vencida','VENCIDAS'],['activa','ACTIVAS']];
-  let lista = DB.suscripciones.slice().sort((a, b) => aFecha(a.vence) - aFecha(b.vence));
-  if (P.filtro !== 'todas') lista = lista.filter(s => estadoSuscripcion(s) === P.filtro);
-  if (P.busca){
-    const q = P.busca.toLowerCase();
-    lista = lista.filter(s => nombreCliente(s.clienteId).toLowerCase().includes(q));
-  }
-
-  return `
-  <div class="bloque">
-    <div class="bloque-tit"><h2>Suscripciones</h2><span>${lista.length} de ${DB.suscripciones.length}</span></div>
-    <div class="herram">
-      <input class="buscador" id="pBusca" placeholder="Buscar cliente…" value="${esc(P.busca)}">
-      <div class="filtros">
-        ${filtros.map(([k, t]) => `<button data-filtro="${k}" aria-pressed="${P.filtro === k}">${t}</button>`).join('')}
-      </div>
-    </div>
-    ${lista.length ? `<div class="tabla-cont"><table class="t">
-      <thead><tr><th>Cliente</th><th>Servicio</th><th>Tiempo</th><th>Precio</th><th>Margen</th><th></th></tr></thead>
-      <tbody>${lista.map(s => {
-        const sv = servicioDeSuscripcion(s) || servPorId('');
-        const a = accesoDe(s) || {};
-        const mg = margenDe(s);
-        return `<tr>
-          <td><span class="prin">${esc(nombreCliente(s.clienteId))}</span>
-            ${s.reposiciones ? `<div class="sub">${s.reposiciones} reposición${s.reposiciones > 1 ? 'es' : ''}</div>` : ''}</td>
-          <td>${punto(sv.id)}${esc(sv.nombre)}<div class="sub">${esc(etiquetaPlan(sv.id, s.planClave))} · ${esc(a.perfil || '')}${a.pin ? ' · PIN ' + esc(a.pin) : ''}</div></td>
-          <td>${barraTiempo(s)}</td>
-          <td class="num">${usd(s.precio)}${s.meses > 1 ? `<div class="sub">${s.meses} meses</div>` : ''}</td>
-          <td class="num" style="color:${mg > 0 ? 'var(--vive)' : 'var(--muere)'}">${usd(mg)}<div class="sub">por mes</div></td>
-          <td class="acciones">
-            <button class="acc" data-acceso="${s.id}">ACCESO</button>
-            <button class="acc" data-renovar="${s.id}">RENOVAR</button>
-            <button class="acc" data-reponer="${s.id}">REPONER</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`
-      : vacio('Nada con ese filtro')}
-  </div>`;
+function filaCliente(c){
+  const r = resumenCliente(c);
+  const servicios = [...new Set(r.vivas.map(s => (servicioDeSuscripcion(s) || {}).nombre).filter(Boolean))];
+  /* El revendedor avisa a los suyos: acá solo importa cuántas se le vencen */
+  const pronto = r.vivas.filter(s => diasRestantes(s) <= OP.avisarDiasAntes).length;
+  const estado = c.tipo === 'mayorista'
+    ? (pronto ? `<i class="tono-ambar">${pronto} por vencer</i>` : '<i>al día</i>')
+    : r.prox
+    ? `<i class="${r.dias <= OP.avisarDiasAntes ? 'tono-ambar' : ''}">${esc(comoFalta(r.prox.vence))}</i>`
+    : r.vencidas ? '<i class="tono-rojo">vencido</i>' : '<i>sin cuentas</i>';
+  const detalle = c.tipo === 'mayorista'
+    ? 'Revendedor · ' + r.vivas.length + ' unidades · saldo ' + usd(saldoDe(c.id))
+    : (r.vivas.length ? r.vivas.length + (r.vivas.length === 1 ? ' cuenta' : ' cuentas') + ' · ' + servicios.join(', ') : '+' + c.whatsapp);
+  return `<li><button class="cli-fila" data-cliente-ver="${c.id}">
+    <span class="avatar${c.tipo === 'mayorista' ? ' mayor' : ''}">${esc(iniciales(c.nombre))}</span>
+    <span class="cli-txt"><b>${esc(c.nombre)}</b><span>${esc(detalle)}</span></span>
+    <span class="cli-estado">${estado}</span>
+  </button></li>`;
 }
-
-/* ── CLIENTES ─────────────────────────────────────────────────── */
 
 function vistaClientes(){
-  let lista = DB.clientes.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
-  if (P.busca){
-    const q = P.busca.toLowerCase();
-    lista = lista.filter(c => c.nombre.toLowerCase().includes(q) || c.whatsapp.includes(q));
+  const filtros = [['todos','TODOS'],['semana','VENCEN ESTA SEMANA'],['vencidos','VENCIDOS'],['revendedores','REVENDEDORES']];
+  let lista = DB.clientes.slice();
+  if (P.busca.trim()){
+    const q = P.busca.trim().toLowerCase(), qd = q.replace(/\D/g, '');
+    lista = lista.filter(c => c.nombre.toLowerCase().includes(q) || (qd.length >= 3 && c.whatsapp.includes(qd)));
   }
+  const R = new Map(lista.map(c => [c.id, resumenCliente(c)]));
+  if (P.filtro === 'semana') lista = lista.filter(c => { const r = R.get(c.id); return r.prox && r.dias <= 7; });
+  if (P.filtro === 'vencidos') lista = lista.filter(c => { const r = R.get(c.id); return !r.vivas.length && r.vencidas; });
+  if (P.filtro === 'revendedores') lista = lista.filter(c => c.tipo === 'mayorista');
+  /* Lo que vence primero, arriba; los vencidos y los sin cuentas después, y
+     los revendedores al final (tienen su propio panel) */
+  const peso = c => { const r = R.get(c.id);
+    return (c.tipo === 'mayorista' ? 1e5 : 0) + (r.prox ? r.dias : r.vencidas ? 1e4 : 2e4); };
+  lista.sort((a, b) => peso(a) - peso(b) || a.nombre.localeCompare(b.nombre));
+
   return `
-  <div class="bloque">
+  <div class="bloque angosto">
     <div class="bloque-tit"><h2>Clientes</h2><span>${lista.length} de ${DB.clientes.length}</span></div>
     <div class="herram">
-      <input class="buscador" id="pBusca" placeholder="Buscar por nombre o teléfono…" value="${esc(P.busca)}">
+      <label class="buscar chico">${ico('lupa')}<input id="pBusca" placeholder="Nombre o teléfono…" value="${esc(P.busca)}" autocomplete="off"></label>
+      <div class="filtros">${filtros.map(([k, t]) => `<button data-filtro="${k}" aria-pressed="${P.filtro === k}">${t}</button>`).join('')}</div>
     </div>
-    <div class="tabla-cont"><table class="t">
-      <thead><tr><th>Cliente</th><th>Tipo</th><th>Activas</th><th>Gasta al mes</th><th></th></tr></thead>
-      <tbody>${lista.map(c => {
-        const ss = suscripcionesDe(c.id);
-        const vivas = ss.filter(s => estadoSuscripcion(s) !== 'vencida');
-        const gasta = vivas.reduce((t, s) => t + s.precio / (s.meses || 1), 0);
-        return `<tr>
-          <td><span class="prin">${esc(c.nombre)}</span><div class="sub">+${esc(c.whatsapp)}</div></td>
-          <td><span class="chip-e ${c.tipo === 'mayorista' ? 'e-porVencer' : 'e-neutro'}">${c.tipo.toUpperCase()}</span></td>
-          <td class="num">${vivas.length}${ss.length > vivas.length ? `<div class="sub">${ss.length - vivas.length} vencida(s)</div>` : ''}</td>
-          <td class="num">${usd(gasta)}${c.tipo === 'mayorista' ? `<div class="sub">saldo ${usd(saldoDe(c.id))}</div>` : ''}</td>
-          <td class="acciones">
-            <a class="acc" target="_blank" rel="noopener" href="cuenta.html?c=${encodeURIComponent(c.codigoAcceso)}">VER PORTAL</a>
-            <a class="acc" target="_blank" rel="noopener" href="${waLink('Hola ' + primer(c.nombre) + ', este es tu link de StreamVe: ahí ves tus cuentas, cuándo vencen y renovás.\n' + linkPortal(c), c.whatsapp)}">MANDAR LINK</a>
-            <button class="acc" data-cajon="venta" data-cliente="${c.id}">+ VENTA</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody></table></div>
+    ${lista.length ? `<ul class="lista-cli-p">${lista.map(filaCliente).join('')}</ul>` : vacio('Nadie con ese filtro')}
   </div>`;
 }
 
-/* ── DINERO ───────────────────────────────────────────────────── */
+/* La ficha del cliente: todo lo suyo y lo que se le puede hacer */
+function cajonCliente(){
+  const c = DB.clientes.find(x => x.id === P.cajon.id);
+  if (!c) return '';
+  const r = resumenCliente(c);
+  /* Las activas arriba (la que vence primero, primera); las vencidas al final */
+  const ss = r.vivas.concat(r.ss.filter(s => !r.vivas.includes(s))
+    .sort((a, b) => aFecha(b.vence) - aFecha(a.vence)));
+  const hist = historialDe(c.id).slice(0, 6);
+  return cajonHTML(c.nombre, `
+    <div class="ficha-cli">
+      <span class="avatar grande${c.tipo === 'mayorista' ? ' mayor' : ''}">${esc(iniciales(c.nombre))}</span>
+      <div><b>+${esc(c.whatsapp)}</b><span>${c.tipo === 'mayorista' ? 'Revendedor · saldo ' + usd(saldoDe(c.id)) : 'Cliente' + (c.creado ? ' desde el ' + fechaCorta(c.creado) : '')}</span></div>
+    </div>
+    <div class="ficha-acc">
+      <a class="acc" target="_blank" rel="noopener" href="${waLink('Hola ' + primer(c.nombre) + ', ', c.whatsapp)}">WHATSAPP</a>
+      <a class="acc" target="_blank" rel="noopener" href="${waLink('Hola ' + primer(c.nombre) + ', este es tu link de StreamVe: ahí ves tus cuentas, cuándo vencen y renovás.\n' + linkPortal(c), c.whatsapp)}">MANDAR SU LINK</a>
+      <a class="acc" target="_blank" rel="noopener" href="cuenta.html?c=${encodeURIComponent(c.codigoAcceso)}">VER SU PORTAL</a>
+    </div>
 
-function vistaDinero(){
+    <h4>${c.tipo === 'mayorista' ? 'SUS UNIDADES' : 'SUS CUENTAS'}</h4>
+    ${ss.length ? ss.map(s => {
+      const sv = servicioDeSuscripcion(s) || servPorId('');
+      const a = accesoDe(s) || {};
+      const e = estadoSuscripcion(s);
+      return `<div class="susc-ficha">
+        <div class="susc-cab">${punto(sv.id)}<b>${esc(sv.nombre)}</b><span>${esc(etiquetaPlan(sv.id, s.planClave))}${s.meses === 12 ? ' · 12 meses' : ''}</span>${chipEstado(e)}</div>
+        ${barraTiempo(s)}
+        <div class="sub">${a.perfil ? esc(a.perfil) + (a.pin ? ' · PIN ' + esc(a.pin) : '') + ' · ' + esc(a.correo) : 'Sin pantalla asignada'}</div>
+        <div class="susc-acc">
+          ${a.perfil ? `<button class="acc" data-acceso="${s.id}">MANDAR ACCESO</button>` : ''}
+          <button class="acc" data-renovar="${s.id}">YA PAGÓ · RENOVAR</button>
+          ${e !== 'vencida' ? `<button class="acc" data-reponer="${s.id}">NO LE FUNCIONA</button>` : ''}
+          ${e === 'vencida' && diasRestantes(s) < -OP.graciaDias ? `<button class="acc" data-liberar="${s.id}">RECUPERAR PANTALLA</button>` : ''}
+        </div>
+      </div>`;
+    }).join('') : '<p class="cajon-nota">Todavía no tiene cuentas.</p>'}
+
+    ${hist.length ? `<h4>HISTORIAL</h4>
+    <ul class="hist-ficha">${hist.map(ev => `<li><span>${esc(fechaCorta(ev.fecha))}</span><b>${esc(ev.texto)}</b>${ev.monto != null ? `<em>${usd(ev.monto)}</em>` : ''}</li>`).join('')}</ul>` : ''}
+  `, `<button class="acc pri grande" data-cajon="venta" data-cliente="${c.id}">+ VENDERLE OTRA</button>`);
+}
+
+/* ═══ MIS CUENTAS (las del proveedor) ═══════════════════════════ */
+
+function vistaCuentas(){
+  const grupos = CAT.map(x => ({ x, madres: DB.cuentasMadre.filter(m => m.servicioId === x.id)
+    .sort((a, b) => aFecha(a.vence) - aFecha(b.vence)) }));
+  const total = DB.cuentasMadre.reduce((t, m) => t + m.costo, 0);
+
+  return `
+  <div class="bloque">
+    <div class="bloque-tit"><h2>Mis cuentas</h2><span>las que le compraste al proveedor · ${DB.cuentasMadre.length} · ${usd(total)}</span>
+      <button class="acc pri der-btn" data-cajon="madre">+ CARGAR CUENTA</button></div>
+    ${grupos.map(({ x, madres }) => {
+      const cap = madres.reduce((t, m) => t + m.capacidad, 0);
+      const libres = stockDisponible(x.id);
+      if (!madres.length) return `
+      <div class="grupo vacio-g">
+        <div class="grupo-tit">${punto(x.id)}<b>${esc(x.nombre)}</b><span>no tenés cuentas</span>
+          <button class="acc leve" data-cajon="madre" data-sid="${x.id}">CARGAR</button></div>
+      </div>`;
+      /* Cerrado por defecto; se abre solo si hay algo que renovar pronto */
+      const urgente = madres.some(m => diasEntre(HOY, m.vence) <= 5 && clientesEnMadre(m).length);
+      const clave = 'g-' + x.id;
+      const abierto = P.abiertos[clave] !== undefined ? P.abiertos[clave] : urgente;
+      return `
+      <div class="grupo${abierto ? ' abierto' : ''}">
+        <div class="grupo-tit">${punto(x.id)}<b>${esc(x.nombre)}</b>
+          <span><b class="${libres ? '' : 'tono-rojo'}">${libres} libres</b> de ${cap} pantallas${urgente ? ' · <b class="tono-ambar">renovar pronto</b>' : ''}</span>
+          <button class="acc leve" data-abrir-grupo="${clave}" data-actual="${abierto ? 1 : 0}">${abierto ? 'CERRAR' : 'VER ' + madres.length + (madres.length === 1 ? ' CUENTA' : ' CUENTAS')}</button>
+          <button class="acc leve" data-cajon="madre" data-sid="${x.id}">+ OTRA</button></div>
+        ${abierto ? `<div class="tabla-cont"><table class="t">
+          <thead><tr><th>Proveedor</th><th>Pantallas</th><th>Vence</th><th>Costo</th><th></th></tr></thead>
+          <tbody>${madres.map(m => {
+            const d = diasEntre(HOY, m.vence);
+            const adentro = clientesEnMadre(m);
+            const despues = adentro.filter(s => aFecha(s.vence) > aFecha(m.vence)).length;
+            return `<tr>
+              <td><span class="prin">${esc(m.proveedor || 'Sin proveedor')}</span><div class="sub">${esc(m.correo)}</div></td>
+              <td>${barraCapacidad(m)}</td>
+              <td><span class="chip-e ${d < 0 ? 'e-vencida' : d <= 5 ? 'e-porVencer' : 'e-neutro'}">${comoFalta(m.vence)}</span>
+                ${despues ? `<div class="sub tono-ambar">renovala antes del ${fechaCorta(m.vence)}: ${despues} ${despues === 1 ? 'cliente sigue' : 'clientes siguen'} después</div>` : ''}</td>
+              <td class="num">${usd(m.costo)}<div class="sub">${usd(m.costo / m.capacidad)} por pantalla</div></td>
+              <td class="acciones">
+                <button class="acc" data-copiar="${esc(m.correo + '\n' + m.clave)}">COPIAR ACCESO</button>
+                <button class="acc ${despues || d <= 5 ? 'pri' : ''}" data-renovar-madre="${m.id}">YA LA RENOVÉ</button>
+              </td>
+            </tr>`;
+          }).join('')}</tbody></table></div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ═══ PLATA ═════════════════════════════════════════════════════ */
+
+function vistaPlata(){
   const r = resumenDinero();
-  const vivas = DB.suscripciones.filter(s => estadoSuscripcion(s) !== 'vencida');
+  const vivas = DB.suscripciones.filter(s => s.estado !== 'cancelada' && estadoSuscripcion(s) !== 'vencida');
   const recurrente = vivas.reduce((t, s) => t + s.precio / (s.meses || 1), 0);
   const margenMes  = vivas.reduce((t, s) => t + margenDe(s), 0);
 
   return `
   <div class="bloque">
-    <div class="bloque-tit"><h2>Dinero</h2><span>lo que corre este mes</span></div>
+    <div class="bloque-tit"><h2>Plata</h2><span>${HOY.toLocaleDateString('es-VE', { month:'long', year:'numeric' })}</span></div>
     <div class="plata" style="margin-top:16px">
-      <div><u>FACTURACIÓN VIVA</u><b>${usd(recurrente)}</b><span>${vivas.length} suscripciones al mes</span></div>
-      <div class="verde"><u>MARGEN REAL</u><b>${usd(margenMes)}</b><span>después del costo de cuentas madre</span></div>
-      <div><u>INVERTIDO EN STOCK</u><b>${usd(r.costoMadres)}</b><span>${DB.cuentasMadre.length} cuentas madre</span></div>
-      <div><u>MARGEN POR CLIENTE</u><b>${usd(vivas.length ? margenMes / vivas.length : 0)}</b><span>promedio mensual</span></div>
+      <div><u>VENDISTE ESTE MES</u><b>${usd(r.ingreso)}</b><span>${r.ventas} ${r.ventas === 1 ? 'venta' : 'ventas y renovaciones'}</span></div>
+      <div class="verde"><u>TE QUEDÓ DE GANANCIA</u><b>${usd(r.margen)}</b><span>después de pagar las cuentas</span></div>
+      <div><u>COBRÁS CADA MES</u><b>${usd(recurrente)}</b><span>${vivas.length} pantallas activas · ${usd(margenMes)} de ganancia</span></div>
+      <div><u>PUESTO EN CUENTAS</u><b>${usd(r.costoMadres)}</b><span>${DB.cuentasMadre.length} cuentas del proveedor</span></div>
     </div>
   </div>
 
   <div class="bloque">
-    <div class="bloque-tit"><h2>Por servicio</h2><span>dónde está el margen de verdad</span></div>
+    <div class="bloque-tit"><h2>Por servicio</h2><span>dónde está la ganancia de verdad</span></div>
     <div class="tabla-cont"><table class="t">
-      <thead><tr><th>Servicio</th><th>Vivas</th><th>Factura</th><th>Margen</th><th>Por unidad</th><th>Stock</th></tr></thead>
+      <thead><tr><th>Servicio</th><th>Activas</th><th>Cobrás al mes</th><th>Ganás al mes</th><th>Por pantalla</th><th>Libres</th></tr></thead>
       <tbody>${CAT.map(x => {
         const ss = vivas.filter(s => { const sv = servicioDeSuscripcion(s); return sv && sv.id === x.id; });
         const fac = ss.reduce((t, s) => t + s.precio / (s.meses || 1), 0);
@@ -376,15 +496,15 @@ function vistaDinero(){
           <td><span class="prin">${punto(x.id)}${esc(x.nombre)}</span></td>
           <td class="num">${ss.length}</td>
           <td class="num">${usd(fac)}</td>
-          <td class="num" style="color:${mg > 0 ? 'var(--vive)' : 'var(--muere)'}">${usd(mg)}</td>
+          <td class="num" style="color:${mg > 0 ? 'var(--vive)' : mg < 0 ? 'var(--muere)' : 'inherit'}">${usd(mg)}</td>
           <td class="num">${usd(ss.length ? mg / ss.length : 0)}</td>
-          <td class="num"><span class="chip-e ${libre === 0 ? 'e-vencida' : libre <= 3 ? 'e-porVencer' : 'e-activa'}">${libre} libres</span></td>
+          <td class="num"><span class="chip-e ${libre === 0 ? 'e-vencida' : libre <= 3 ? 'e-porVencer' : 'e-activa'}">${libre}</span></td>
         </tr>`;
       }).join('')}</tbody></table></div>
   </div>`;
 }
 
-/* ── cajones: + VENTA, MANDAR ACCESO, + CUENTA MADRE ─────────── */
+/* ═══ cajones: + VENTA, MANDAR ACCESO, CARGAR CUENTA, FICHA ═════ */
 
 function cajonVenta(){
   const v = P.venta;
@@ -400,7 +520,7 @@ function cajonVenta(){
   const elegido = v.clienteId && DB.clientes.find(c => c.id === v.clienteId);
 
   return cajonHTML(ped ? 'Entregar ' + ped.id : 'Nueva venta', `
-    ${ped ? `<p class="cajon-nota">Llegó por la web. Verificá la captura en el chat y decí de quién es.</p>` : ''}
+    ${ped ? `<p class="cajon-nota">Llegó por la tienda. Fijate en WhatsApp que haya mandado la captura del pago y decí de quién es.</p>` : ''}
     <div class="seg2">
       <button data-v-modo="nuevo" aria-pressed="${v.modo === 'nuevo'}">CLIENTE NUEVO</button>
       <button data-v-modo="existe" aria-pressed="${v.modo === 'existe'}">YA ES CLIENTE</button>
@@ -418,19 +538,18 @@ function cajonVenta(){
           <b>${esc(c.nombre)}</b><span>+${esc(c.whatsapp)} · ${suscripcionesDe(c.id).length} cuentas</span>
         </button>`).join('') || '<p class="sub">Nadie con ese nombre.</p>'}</div>`}
 
-    ${ped ? '' : `<h4>SERVICIO</h4>
+    ${ped ? '' : `<h4>QUÉ SE LLEVA</h4>
     <div class="servs">${CAT.map(s => { const n = stockDisponible(s.id); return `
       <button data-v-sid="${s.id}" aria-pressed="${v.sid === s.id}" ${n ? '' : 'disabled'}>
         ${punto(s.id)}<b>${esc(s.nombre)}</b><span>${n ? n + ' libres' : 'agotado'}</span>
       </button>`; }).join('')}</div>
 
-    <h4>ACCESO</h4>
     <div class="opciones">${x.planes.map(p => `
       <button data-v-plan="${p.k}" aria-pressed="${pl.k === p.k}" ${stockPlan(v.sid, p.k) ? '' : 'disabled'}>
         <b>${esc(p.etq)}</b><span>${usd(p.precio)}/mes</span>
       </button>`).join('')}</div>
 
-    <h4>TIEMPO Y COBRO</h4>
+    <h4>POR CUÁNTO TIEMPO Y CÓMO PAGÓ</h4>
     <div class="opciones">
       <button data-v-meses="1" aria-pressed="${v.meses === 1}"><b>1 mes</b></button>
       <button data-v-meses="12" aria-pressed="${v.meses === 12}"><b>12 meses</b><span>−${Math.round(CFG.descuentoAnual * 100)}%</span></button>
@@ -454,7 +573,7 @@ function cajonAcceso(){
     <p class="cajon-nota">${esc(P.cajon.nota || 'Así le llega a ' + primer(c.nombre) + '. Revisalo y mandalo.')}</p>
     <div class="chat"><div class="chat-burbuja">${burbujaHTML(msg)}</div></div>
     <div class="link-portal">
-      <span>Su portal</span><b>${esc(linkPortal(c).replace('https://', ''))}</b>
+      <span>Su link</span><b>${esc(linkPortal(c).replace('https://', ''))}</b>
       <button class="copiar" data-copiar="${esc(linkPortal(c))}">COPIAR</button>
     </div>
   `, `
@@ -468,56 +587,54 @@ function cajonMadre(){
   const x = servPorId(m.sid);
   const pl = x.planes[0];
   const porPerfil = m.costo && m.capacidad ? +m.costo / +m.capacidad : 0;
-  const proveedores = [...new Set(DB.cuentasMadre.map(c => c.proveedor))].sort();
-  return cajonHTML('Nueva cuenta madre', `
-    <h4>SERVICIO</h4>
+  const proveedores = [...new Set(DB.cuentasMadre.map(c => c.proveedor).filter(Boolean))].sort();
+  return cajonHTML('Cargar cuenta del proveedor', `
+    <p class="cajon-nota">La cuenta que le compraste al proveedor. Cada pantalla que tenga queda lista para vender.</p>
+    <h4>DE QUÉ ES</h4>
     <div class="servs">${CAT.map(s => `
       <button data-m-sid="${s.id}" aria-pressed="${m.sid === s.id}">${punto(s.id)}<b>${esc(s.nombre)}</b><span>${stockDisponible(s.id)} libres</span></button>`).join('')}</div>
     <div class="campos">
       <label>Correo de la cuenta<input id="mCorreo" value="${esc(m.correo)}" placeholder="cuenta@correo.com" autocomplete="off"></label>
-      <label>Clave<input id="mClave" value="${esc(m.clave)}" autocomplete="off"></label>
+      <label>Clave de la cuenta<input id="mClave" value="${esc(m.clave)}" autocomplete="off"></label>
       <div class="campos-2">
-        <label>Perfiles<input id="mCap" type="number" min="1" max="8" value="${esc(m.capacidad)}"></label>
-        <label>Costo $<input id="mCosto" type="number" min="0" step="0.01" value="${esc(m.costo)}" placeholder="11.00"></label>
+        <label>Pantallas<input id="mCap" type="number" min="1" max="8" value="${esc(m.capacidad)}"></label>
+        <label>Te costó $<input id="mCosto" type="number" min="0" step="0.01" value="${esc(m.costo)}" placeholder="11.00"></label>
       </div>
       <label>Proveedor<input id="mProv" value="${esc(m.proveedor)}" list="provs" placeholder="VirtuMall · TANCHI TV" autocomplete="off"></label>
       <datalist id="provs">${proveedores.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
-      <label>Vence<input id="mVence" type="date" value="${esc(m.vence || dia(masDias(HOY, OP.diasPorMes)))}"></label>
+      <label>Vence el<input id="mVence" type="date" value="${esc(m.vence || dia(masDias(HOY, OP.diasPorMes)))}"></label>
     </div>
   `, `
     <div class="pie-total">
       <b>${porPerfil ? usd(porPerfil) : '—'}</b>
-      <span>por perfil${porPerfil ? ` · margen ${usd(pl.precio - porPerfil)} al público, ${pl.precioMayorista != null ? usd(pl.precioMayorista - porPerfil) : '—'} al mayor` : ''}</span>
+      <span>te cuesta cada pantalla${porPerfil ? ` · ganás ${usd(pl.precio - porPerfil)} por venta${pl.precioMayorista != null ? ', ' + usd(pl.precioMayorista - porPerfil) + ' al revendedor' : ''}` : ''}</span>
     </div>
-    <button class="acc pri grande" data-guardar-madre="1">GUARDAR</button>
+    <button class="acc pri grande" data-guardar-madre="1">GUARDAR CUENTA</button>
   `);
 }
 
 function pintarCajon(){
   const el = document.getElementById('pCajon');
   const t = P.cajon && P.cajon.tipo;
-  el.innerHTML = t === 'venta' ? cajonVenta() : t === 'acceso' ? cajonAcceso() : t === 'madre' ? cajonMadre() : '';
+  el.innerHTML = t === 'venta' ? cajonVenta() : t === 'acceso' ? cajonAcceso()
+               : t === 'madre' ? cajonMadre() : t === 'cliente' ? cajonCliente() : '';
   document.body.classList.toggle('con-cajon', !!t);
 }
 function abrirCajon(c){ P.cajon = c; pintarCajon(); document.querySelector('.cajon-cuerpo')?.scrollTo(0, 0); }
 function cerrarCajon(){ P.cajon = null; pintarCajon(); }
 
-/* ── render y eventos ─────────────────────────────────────────── */
+/* ═══ render y eventos ══════════════════════════════════════════ */
 
 function pintar(){
-  document.getElementById('pNav').innerHTML = VISTAS.map(([k, t]) => {
-    let n = 0;
-    if (k === 'hoy') n = pedidosPendientes().length + incidenciasAbiertas().length +
-                         directos(vencenEntre(0, 1)).length + recargasPendientes().length;
-    return `<button data-ir="${k}" aria-pressed="${P.vista === k}">${t}${n ? `<i>${n}</i>` : ''}</button>`;
-  }).join('');
+  const n = DB.cuentasMadre.length || DB.suscripciones.length ? bandeja(tareas()).pendientes : 0;
+  document.getElementById('pNav').innerHTML = VISTAS.map(([k, t]) =>
+    `<button data-ir="${k}" aria-pressed="${P.vista === k}">${t}${k === 'hoy' && n ? `<i>${n}</i>` : ''}</button>`).join('');
 
   const main = document.getElementById('pMain');
   main.innerHTML =
-      P.vista === 'madres'   ? vistaMadres()
-    : P.vista === 'susc'     ? vistaSusc()
-    : P.vista === 'clientes' ? vistaClientes()
-    : P.vista === 'dinero'   ? vistaDinero()
+      P.vista === 'clientes' ? vistaClientes()
+    : P.vista === 'cuentas'  ? vistaCuentas()
+    : P.vista === 'plata'    ? vistaPlata()
     : vistaHoy();
   etiquetarTablas(main);
 
@@ -539,17 +656,27 @@ async function hacer(boton, tarea, alTerminar){
 }
 
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-liberar],[data-descartar],[data-ir],[data-ver],[data-filtro],[data-reponer],[data-entregar],[data-renovar],[data-renovar-madre],[data-acreditar],[data-acceso],[data-cajon],[data-cerrar-cajon],[data-v-modo],[data-v-cliente],[data-v-sid],[data-v-plan],[data-v-meses],[data-v-metodo],[data-registrar],[data-m-sid],[data-guardar-madre]');
+  const t = e.target.closest('[data-abrir-grupo],[data-avisar],[data-cliente-ver],[data-liberar],[data-descartar],[data-ir],[data-filtro],[data-reponer],[data-entregar],[data-renovar],[data-renovar-madre],[data-acreditar],[data-acceso],[data-cajon],[data-cerrar-cajon],[data-v-modo],[data-v-cliente],[data-v-sid],[data-v-plan],[data-v-meses],[data-v-metodo],[data-registrar],[data-m-sid],[data-guardar-madre]');
   if (!t) return;
   const d = t.dataset;
 
-  if (d.ir){ P.vista = d.ir; P.busca = ''; P.filtro = 'todas'; window.scrollTo(0, 0); return pintar(); }
-  if (d.ver){ document.getElementById(d.ver)?.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+  if (d.ir){
+    P.vista = d.ir; P.busca = ''; P.filtro = d.filtroIr || 'todos';
+    window.scrollTo(0, 0); return pintar();
+  }
   if (d.filtro){ P.filtro = d.filtro; return pintar(); }
+  if (d.abrirGrupo){
+    /* data-actual: los grupos que arrancan abiertos solos todavía no están en P.abiertos */
+    P.abiertos[d.abrirGrupo] = d.actual !== undefined ? d.actual !== '1' : !P.abiertos[d.abrirGrupo];
+    return pintar();
+  }
+  /* El link de WhatsApp se abre igual; acá solo se anota que ya se avisó */
+  if (d.avisar){ marcarAvisado(d.avisar); setTimeout(repintar, 300); return; }
+  if (d.clienteVer) return abrirCajon({ tipo:'cliente', id:d.clienteVer });
 
   if (d.entregar){
     const ped = DB.pedidos.find(x => x.id === d.entregar);
-    /* Sin cliente (vino de la web): primero hay que decir de quién es */
+    /* Sin cliente (vino de la tienda): primero hay que decir de quién es */
     if (!ped.clienteId){
       P.venta = Object.assign(P.venta, { pedido:ped.id, modo:'nuevo', clienteId:null, nombre:'', wa:'', busca:'' });
       return abrirCajon({ tipo:'venta' });
@@ -559,16 +686,16 @@ document.addEventListener('click', async e => {
   }
   if (d.descartar) return hacer(t, () => ACC.descartarPedido(d.descartar), () => aviso('Pedido descartado'));
   if (d.reponer) return hacer(t, () => ACC.reponer(d.reponer, 'Reportado desde el panel'), () =>
-    abrirCajon({ tipo:'acceso', sid:d.reponer, titulo:'Repuesta',
-      nota:'Perfil nuevo, misma fecha de vencimiento. Mandale el acceso nuevo.' }));
+    abrirCajon({ tipo:'acceso', sid:d.reponer, titulo:'Le diste otra pantalla',
+      nota:'Pantalla nueva, misma fecha de vencimiento. Mandale el acceso nuevo.' }));
   if (d.renovar) return hacer(t, () => ACC.renovar(d.renovar, 1), r =>
-    aviso('Renovada hasta el ' + fechaCorta(r.vence) + ' · ' + usd(r.precio)));
+    aviso('Renovado hasta el ' + fechaCorta(r.vence) + ' · ' + usd(r.precio)));
   if (d.renovarMadre) return hacer(t, () => ACC.renovarMadre(d.renovarMadre), r =>
-    aviso('Cuenta madre renovada hasta el ' + fechaCorta(r.vence)));
+    aviso('Cuenta renovada hasta el ' + fechaCorta(r.vence)));
   if (d.acreditar) return hacer(t, () => ACC.acreditarRecarga(d.acreditar), r =>
     aviso(usd(r.movimiento.monto) + ' acreditados a ' + nombreCliente(r.movimiento.clienteId)));
-  if (d.liberar) return hacer(t, () => ACC.liberar(d.liberar), r =>
-    aviso(r.perfiles.length + (r.perfiles.length === 1 ? ' perfil volvió' : ' perfiles volvieron') + ' al stock. Cambiale el PIN.'));
+  if (d.liberar) return hacer(t, () => ACC.liberar(d.liberar), () =>
+    aviso('La pantalla quedó libre. Cambiale el PIN antes de venderla.'));
   if (d.acceso) return abrirCajon({ tipo:'acceso', sid:d.acceso });
 
   if (d.cajon === 'venta'){
@@ -617,18 +744,18 @@ document.addEventListener('click', async e => {
              abrirCajon({ tipo:'acceso', sid:r.suscripcion.id, titulo:'Venta registrada' }); });
   }
 
-  /* dentro del cajón de cuenta madre */
+  /* dentro del cajón de cuenta del proveedor */
   if (d.mSid){ P.madre.sid = d.mSid; P.madre.capacidad = CAPACIDAD_TIPICA[d.mSid] || 4; return pintarCajon(); }
   if (d.guardarMadre){
     const m = P.madre;
     return hacer(t, () => ACC.agregarCuentaMadre({ servicioId:m.sid, correo:m.correo, clave:m.clave,
         capacidad:m.capacidad, costo:m.costo, proveedor:m.proveedor, vence:m.vence }),
-      r => { aviso(servPorId(m.sid).nombre + ': ' + r.madre.capacidad + ' perfiles nuevos en stock'); cerrarCajon(); });
+      r => { aviso(servPorId(m.sid).nombre + ': ' + r.madre.capacidad + ' pantallas nuevas para vender'); cerrarCajon(); });
   }
 });
 
 /* Lo que se escribe en el cajón se guarda sin repintar, para no perder
-   el foco; solo la búsqueda de cliente repinta la lista. */
+   el foco; solo las búsquedas repintan su lista. */
 const CAMPOS = { vNombre:['venta','nombre'], vWa:['venta','wa'], mCorreo:['madre','correo'], mClave:['madre','clave'],
                  mCap:['madre','capacidad'], mCosto:['madre','costo'], mProv:['madre','proveedor'], mVence:['madre','vence'] };
 document.addEventListener('input', e => {
