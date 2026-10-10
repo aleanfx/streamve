@@ -16,7 +16,7 @@ body.panel{background:#141212;overflow-x:visible}
   border-bottom:1px solid var(--line);
 }
 .pbar-in{
-  max-width:1560px;margin:0 auto;padding:0 var(--pad);
+  max-width:1240px;margin:0 auto;padding:0 var(--pad);
   height:var(--panel-h);display:flex;align-items:center;gap:18px;
 }
 .pbar-logo{height:26px;width:auto;display:block}
@@ -32,7 +32,7 @@ body.panel{background:#141212;overflow-x:visible}
   position:sticky;top:var(--panel-h);z-index:29;
 }
 .pnav-in{
-  max-width:1560px;margin:0 auto;padding:0 var(--pad);
+  max-width:1240px;margin:0 auto;padding:0 var(--pad);
   display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
 }
 .pnav-in::-webkit-scrollbar{display:none}
@@ -48,7 +48,7 @@ body.panel{background:#141212;overflow-x:visible}
   background:var(--accent);color:var(--app);vertical-align:1px;
 }
 
-.pmain{max-width:1560px;margin:0 auto;padding:22px var(--pad) 70px}
+.pmain{max-width:1240px;margin:0 auto;padding:22px var(--pad) 70px}
 
 /* ── alertas: lo único que pide acción, arriba de todo ── */
 .alertas{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:26px}
@@ -204,7 +204,7 @@ b.nuevo{color:var(--vive);font-size:10px;letter-spacing:.1em}
 /* ── saldo del revendedor ── la cifra que manda */
 .saldo{background:#181615;border-bottom:1px solid var(--line)}
 .saldo-in{
-  max-width:1560px;margin:0 auto;padding:22px var(--pad);
+  max-width:1240px;margin:0 auto;padding:22px var(--pad);
   display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;
 }
 .saldo-cifra u{display:block;font-size:9px;letter-spacing:.2em;font-weight:800;color:var(--dim);text-decoration:none}
@@ -218,7 +218,7 @@ b.nuevo{color:var(--vive);font-size:10px;letter-spacing:.1em}
 
 .recarga{border-top:1px solid var(--line);background:#1c1a19}
 .recarga-in{
-  max-width:1560px;margin:0 auto;padding:22px var(--pad) 26px;
+  max-width:1240px;margin:0 auto;padding:22px var(--pad) 26px;
   display:grid;grid-template-columns:1fr;gap:22px 40px;
 }
 @media (min-width:900px){.recarga-in{grid-template-columns:1fr 1fr}}
@@ -585,3 +585,99 @@ button.login-p-demo{background:none;border:0;padding:0;cursor:pointer}
 @media (max-width:640px){.tarea-grupo{padding-left:16px}}
 @media (max-width:480px){.pnav button{padding:13px 9px;letter-spacing:.04em;font-size:11.5px}}
 .angosto{max-width:920px}
+
+/* ═══ Hoy como tablero: la lista a la izquierda, el estado al costado ═══ */
+.pbar .hoy{display:none}                      /* la fecha ya va en el titular */
+.tablero{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:clamp(28px,4.4vw,64px);align-items:start;padding-top:10px}
+.tablero-lado{position:sticky;top:calc(var(--panel-h) + 62px);display:flex;flex-direction:column;gap:12px}
+@media (max-width:1020px){
+  .tablero{grid-template-columns:minmax(0,1fr)}
+  .tablero-lado{position:static}
+}
+
+/* El número ES el titular: se lee desde la otra punta del cuarto */
+.hero-hoy{display:flex;align-items:center;gap:clamp(14px,2vw,24px);margin:6px 0 22px}
+.hero-num{
+  font-size:clamp(84px,10vw,148px);font-weight:800;line-height:.76;letter-spacing:-.07em;
+  color:var(--accent);font-variant-numeric:tabular-nums;flex:none;
+}
+.hero-hoy h1{margin:8px 0 0;font-size:clamp(22px,2.5vw,32px);font-weight:800;letter-spacing:-.03em;line-height:1.05;max-width:9em}
+.hero-hoy.listo .hero-num{display:grid;place-items:center;width:84px;height:84px;border-radius:50%;background:rgba(95,191,122,.12)}
+.hero-hoy.listo .hero-num svg{width:44px;height:44px;fill:none;stroke:var(--vive);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hero-hoy.listo h1{max-width:none}
+
+.tablero .buscar{margin-bottom:4px}
+.tablero .tareas{border-top:0}
+.tablero .al-dia{border-top:0;margin-top:14px}
+
+/* Secciones por urgencia */
+.tarea-sec{display:flex;align-items:baseline;gap:10px;padding:26px 0 9px;border-bottom:1px solid var(--line-2)}
+.tarea-sec b{font-size:10px;letter-spacing:.22em;font-weight:800;color:var(--mute-2)}
+.tarea-sec span{font-size:12px;color:var(--dim)}
+.tarea-sec.s-urgente{border-bottom-color:var(--accent)}
+.tarea-sec.s-urgente b{color:var(--accent-400)}
+
+.tablero .tarea{
+  grid-template-columns:46px minmax(0,1fr) auto;padding:14px 12px;margin:0 -12px;
+  border-radius:6px;transition:background .14s ease;
+}
+.tablero .tarea:hover{background:rgba(255,255,255,.028)}
+.tablero .tarea-ico{width:44px;height:44px}
+/* La tarjeta del servicio, con el motivo en una insignia */
+.tarea-arte{
+  position:relative;width:44px;height:55px;border-radius:5px;flex:none;
+  background:#0e0d0c center/cover no-repeat;box-shadow:0 6px 16px rgba(0,0,0,.45);
+}
+.tarea-arte i{
+  position:absolute;right:-7px;bottom:-6px;width:23px;height:23px;border-radius:50%;
+  display:grid;place-items:center;background:#141212;border:1.5px solid #141212;color:var(--mute-2);
+}
+.tarea-arte i svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.t-rojo .tarea-arte i{color:var(--muere);background:#2a1512}
+.t-ambar .tarea-arte i{color:var(--avisa);background:#2a2110}
+.tablero .tarea-grupo{padding-left:58px}
+.tablero .tarea-grupo .tarea{margin:0}
+
+.acc.fuerte{border-color:var(--mute-2);color:var(--ink)}
+.acc.fuerte:hover{background:var(--ink);border-color:var(--ink);color:var(--app)}
+
+@media (max-width:640px){
+  .tablero .tarea{grid-template-columns:46px minmax(0,1fr);margin:0;padding:14px 0}
+  .tablero .tarea:hover{background:none}
+  .tablero .tarea-grupo{padding-left:14px}
+  .hero-num{font-size:84px}
+}
+
+/* ── el costado ── */
+.lado-caja{border:1px solid var(--line);border-radius:var(--r-card);background:#1a1817;padding:18px 18px 20px}
+.lado-caja header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.lado-caja u{font-size:9.5px;letter-spacing:.2em;font-weight:800;color:var(--dim);text-decoration:none}
+.lado-caja header button{border:0;background:none;padding:0;font-size:11.5px;font-weight:600;color:var(--mute);cursor:pointer}
+.lado-caja header button:hover{color:var(--ink)}
+.lado-cifra b{display:block;font-size:42px;font-weight:800;line-height:.95;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.lado-cifra span{display:block;font-size:12.5px;color:var(--mute);margin-top:6px}
+.lado-barra{height:6px;border-radius:3px;background:rgba(255,255,255,.08);margin:16px 0 10px;overflow:hidden}
+.lado-barra i{display:block;height:100%;border-radius:3px;background:var(--vive)}
+.lado-caja p{margin:0;font-size:13px;color:var(--mute-2)}
+.lado-caja p b{color:var(--vive);font-variant-numeric:tabular-nums}
+
+.medidores{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:11px}
+.medidores li{display:grid;grid-template-columns:96px minmax(0,1fr) 44px;gap:10px;align-items:center;font-size:13px}
+.medidores span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.medidor{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.medidor i{display:block;height:100%;border-radius:3px}
+.medidores b{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.medidores .cero span{color:var(--mute)}
+.medidores button{border:0;background:none;padding:0;font-size:11.5px;font-weight:800;color:var(--accent-400);cursor:pointer;text-align:right}
+.medidores button:hover{color:var(--ink)}
+
+.semana{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:118px}
+.semana li{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
+.semana b{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;min-height:14px}
+.semana i{display:block;width:100%;max-width:28px;border-radius:3px 3px 0 0;background:rgba(255,255,255,.16)}
+.semana .hoy i{background:var(--accent)}
+.semana .nada i{background:rgba(255,255,255,.06)}
+.semana span{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--dim);text-transform:uppercase}
+.semana .hoy span{color:var(--accent-400)}
+.semana em{font-style:normal;font-size:11.5px;color:var(--mute-2);font-variant-numeric:tabular-nums}
+.angosto{margin-left:auto;margin-right:auto}

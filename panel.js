@@ -124,7 +124,7 @@ function tareas(){
     const espera = p.estado === 'esperando';
     const quien = p.clienteId ? primer(nombreCliente(p.clienteId)) : '';
     t.push({
-      prio: espera ? 1.5 : 1, tono: espera ? 'ambar' : 'rojo', icono:'pago',
+      prio: espera ? 1.5 : 1, tono: espera ? 'ambar' : 'rojo', icono:'pago', sid: it.servicioId,
       titulo: espera ? 'Pedido de ' + sv.nombre + ' desde la tienda'
                      : (quien ? quien + ' te pagó ' : 'Te pagaron ') + sv.nombre,
       sub: [p.id, etiquetaPlan(it.servicioId, it.planClave) + (it.cantidad > 1 ? ' × ' + it.cantidad : '') + (it.meses === 12 ? ' · 12 meses' : ''),
@@ -143,7 +143,7 @@ function tareas(){
     const sv = servicioDeSuscripcion(s) || servPorId('');
     const sin = stockPlan(sv.id, s.planClave) === 0;
     t.push({
-      prio:2, tono:'rojo', icono:'alerta',
+      prio:2, tono:'rojo', icono:'alerta', sid: sv.id,
       titulo: 'A ' + primer(nombreCliente(s.clienteId)) + ' no le funciona ' + sv.nombre,
       sub: i.causa + ' · ' + hace(i.abierta),
       nota: sin ? 'No tenés pantallas libres de ' + sv.nombre + ' para reponer.' : '',
@@ -169,7 +169,7 @@ function tareas(){
     const d = diasRestantes(s), yo = primer(nombreCliente(s.clienteId));
     const avisado = avisadoHoy(s.id);
     t.push({
-      prio: avisado ? 9 : 4, tono:'ambar', icono:'reloj', hecho: avisado, quien: yo,
+      prio: avisado ? 9 : 4, tono:'ambar', icono:'reloj', hecho: avisado, quien: yo, sid: sv.id,
       titulo: d >= 0 ? 'A ' + yo + ' se le vence ' + sv.nombre + (d === 0 ? ' hoy' : ' mañana')
                      : 'A ' + yo + ' se le venció ' + sv.nombre + (d === -1 ? ' ayer' : ' hace ' + Math.abs(d) + ' días'),
       sub: avisado ? 'Ya le avisaste hoy · cuando te pague, tocá Ya pagó' : 'Avisale para que renueve con la misma clave',
@@ -186,7 +186,7 @@ function tareas(){
     if (d > 5 || !n) return;
     const sv = servPorId(m.servicioId);
     t.push({
-      prio:5, tono: d < 0 ? 'rojo' : 'gris', icono:'renovar',
+      prio:5, tono: d < 0 ? 'rojo' : 'gris', icono:'renovar', sid: m.servicioId,
       titulo: d < 0 ? 'Tu ' + sv.nombre + ' del proveedor venció: renovalo ya'
                     : 'Renová tu ' + sv.nombre + ' con el proveedor antes del ' + fechaCorta(m.vence),
       sub: (m.proveedor || 'Sin proveedor') + ' · ' + n + (n === 1 ? ' cliente adentro' : ' clientes adentro'),
@@ -199,7 +199,7 @@ function tareas(){
     const a = accesoDe(s) || {};
     const c = cliente(s.clienteId);
     t.push({
-      prio:6, tono:'gris', icono:'pantalla', quien: primer(c.nombre),
+      prio:6, tono:'gris', icono:'pantalla', quien: primer(c.nombre), sid: sv.id,
       titulo: primer(c.nombre) + ' no renovó ' + sv.nombre + (c.tipo === 'mayorista' ? ' (revendedor)' : ''),
       sub: 'Venció ' + comoFalta(s.vence).replace('venció ', '') + (a.pin ? ' · cambiale el PIN ' + a.pin + ' a ' + a.perfil : '') + ' y la pantalla queda para vender',
       boton: { txt:'Recuperar pantalla', attr:`data-liberar="${s.id}"` },
@@ -213,7 +213,7 @@ function tareas(){
       return sv && sv.id === x.id && s.estado !== 'cancelada' && estadoSuscripcion(s) !== 'vencida'; }).length;
     if (!vivas) return;
     t.push({
-      prio:7, tono:'gris', icono:'caja',
+      prio:7, tono:'gris', icono:'caja', sid: x.id,
       titulo: 'Te quedaste sin pantallas de ' + x.nombre,
       sub: 'Tenés ' + vivas + (vivas === 1 ? ' cliente' : ' clientes') + ' y nada para reponer si una se cae',
       boton: { txt:'Cargar cuenta', attr:`data-cajon="madre" data-sid="${x.id}"` }
@@ -224,17 +224,24 @@ function tareas(){
 }
 
 function tareaHTML(k){
+  /* Un solo rojo fuerte por pantalla: solo lo urgente lleva el botón lleno */
+  const clase = pri => !pri ? 'leve' : k.grupo ? 'fuerte' : k.prio <= 2 ? 'pri' : 'fuerte';
   const btn = (b, pri) => !b ? '' : b.href
-    ? `<a class="acc ${pri ? 'pri' : 'leve'}" href="${b.href}" target="_blank" rel="noopener" ${b.attr || ''}>${esc(b.txt)}</a>`
-    : `<button class="acc ${pri ? 'pri' : 'leve'}" ${b.attr}>${esc(b.txt)}</button>`;
+    ? `<a class="acc ${clase(pri)}" href="${b.href}" target="_blank" rel="noopener" ${b.attr || ''}>${esc(b.txt)}</a>`
+    : `<button class="acc ${clase(pri)}" ${b.attr}>${esc(b.txt)}</button>`;
+  /* Si la tarea es de un servicio, se reconoce por su tarjeta antes de leer */
+  const sv = k.sid && CAT.find(x => x.id === k.sid);
+  const marca = sv && sv.card && !k.hecho
+    ? `<span class="tarea-arte" style="background-image:url('${sv.card}')"><i>${ico(k.icono)}</i></span>`
+    : `<span class="tarea-ico">${ico(k.hecho ? 'check' : k.icono)}</span>`;
   return `<li class="tarea t-${k.tono}${k.hecho ? ' hecha' : ''}">
-    <span class="tarea-ico">${ico(k.hecho ? 'check' : k.icono)}</span>
+    ${marca}
     <div class="tarea-txt">
       <b>${esc(k.titulo)}</b>
       <span>${esc(k.sub)}</span>
       ${k.nota ? `<em>${esc(k.nota)}</em>` : ''}
     </div>
-    <div class="tarea-acc">${btn(k.extra, false)}${btn(k.boton, !k.hecho && !k.grupo)}</div>
+    <div class="tarea-acc">${btn(k.extra, false)}${btn(k.boton, !k.hecho)}</div>
   </li>`;
 }
 
@@ -244,17 +251,31 @@ const GRUPOS = {
   reloj:    n => ({ titulo: 'Avisale a ' + n + ' clientes que se les vence', sub: 'Cada aviso abre WhatsApp con el mensaje listo' }),
   pantalla: n => ({ titulo: n + ' clientes no renovaron', sub: 'Recuperá esas pantallas para volver a venderlas' })
 };
+
+/* La lista se lee por urgencia, no por tipo: qué no puede esperar, qué es
+   de hoy y qué se hace cuando haya un rato. */
+const SECCION = k => k.hecho ? ['ya', 'YA AVISADOS', 'esperando que paguen']
+  : k.prio <= 2 ? ['urgente', 'AHORA', 'hay plata o un cliente esperando']
+  : k.prio <= 4 ? ['hoy', 'HOY', 'antes de que termine el día']
+  : ['luego', 'CUANDO PUEDAS', 'para que no se te junte'];
+
 function bandeja(lista){
   const filas = [], hechos = {};
-  let pendientes = 0;
+  let pendientes = 0, seccion = '';
   lista.forEach(k => {
     const hermanos = !k.hecho && GRUPOS[k.icono] ? lista.filter(x => x.icono === k.icono && !x.hecho) : [];
-    if (hermanos.length < 3){ filas.push(tareaHTML(k)); if (!k.hecho) pendientes++; return; }
-    if (hechos[k.icono]) return;
+    const agrupa = hermanos.length >= 3;
+    if (agrupa && hechos[k.icono]) return;
+    const [clave, titulo, bajada] = SECCION(k);
+    if (clave !== seccion){
+      seccion = clave;
+      filas.push(`<li class="tarea-sec s-${clave}"><b>${titulo}</b><span>${bajada}</span></li>`);
+    }
+    if (!agrupa){ filas.push(tareaHTML(k)); if (!k.hecho) pendientes++; return; }
     hechos[k.icono] = true; pendientes++;
     const g = GRUPOS[k.icono](hermanos.length), abierto = !!P.abiertos[k.icono];
     const nombres = hermanos.slice(0, 3).map(x => x.quien).join(', ') + (hermanos.length > 3 ? ' y ' + (hermanos.length - 3) + ' más' : '');
-    filas.push(tareaHTML({ grupo: true, tono: k.tono, icono: k.icono, titulo: g.titulo, sub: nombres + ' · ' + g.sub,
+    filas.push(tareaHTML({ grupo: true, prio: k.prio, tono: k.tono, icono: k.icono, titulo: g.titulo, sub: nombres + ' · ' + g.sub,
       boton: { txt: abierto ? 'Cerrar' : 'Ver los ' + hermanos.length, attr: `data-abrir-grupo="${k.icono}"` } }) +
       (abierto ? `<li class="tarea-grupo"><ul class="tareas">${hermanos.map(tareaHTML).join('')}</ul></li>` : ''));
   });
@@ -283,32 +304,85 @@ function resultadosBusqueda(){
   </ul>`;
 }
 
+/* ── el costado: lo que se mira de reojo ── */
+
+/* Plata del mes: la ganancia como porción de lo vendido */
+function ladoPlata(){
+  const r = resumenDinero();
+  const pct = r.ingreso > 0 ? Math.max(0, Math.min(100, Math.round(100 * r.margen / r.ingreso))) : 0;
+  return `<section class="lado-caja">
+    <header><u>ESTE MES</u><button data-ir="plata">ver plata →</button></header>
+    <div class="lado-cifra"><b>${usd(r.ingreso)}</b><span>vendido en ${r.ventas} ${r.ventas === 1 ? 'venta' : 'ventas'}</span></div>
+    <div class="lado-barra"><i style="width:${pct}%"></i></div>
+    <p><b>${usd(r.margen)}</b> te quedan de ganancia · ${pct}%</p>
+  </section>`;
+}
+
+/* Pantallas libres: una barra por servicio, con su color */
+function ladoStock(){
+  return `<section class="lado-caja">
+    <header><u>PANTALLAS PARA VENDER</u><button data-ir="cuentas">mis cuentas →</button></header>
+    <ul class="medidores">${CAT.map(x => {
+      const total = madresVivas(x.id).reduce((t, m) => t + m.capacidad, 0);
+      const libres = stockDisponible(x.id);
+      const pct = total ? Math.round(100 * libres / total) : 0;
+      return `<li class="${libres ? '' : 'cero'}">
+        <span>${esc(x.nombre)}</span>
+        <div class="medidor"><i style="width:${pct}%;background:${x.color}"></i></div>
+        ${libres ? `<b>${libres}</b>` : `<button data-cajon="madre" data-sid="${x.id}">cargar</button>`}
+      </li>`;
+    }).join('')}</ul>
+  </section>`;
+}
+
+/* Los próximos 7 días: cuántos clientes vencen cada día */
+function ladoSemana(){
+  const dias = Array.from({ length: 7 }, (_, i) => {
+    const f = masDias(HOY, i);
+    return { f, n: directos(vencenEntre(i, i)).length };
+  });
+  const tope = Math.max(1, ...dias.map(d => d.n));
+  const total = dias.reduce((t, d) => t + d.n, 0);
+  return `<section class="lado-caja">
+    <header><u>VENCEN ESTA SEMANA</u><button data-ir="clientes" data-filtro-ir="semana">ver ${total} →</button></header>
+    <ol class="semana">${dias.map((d, i) => `
+      <li class="${i === 0 ? 'hoy' : ''}${d.n ? '' : ' nada'}" title="${d.n} ${d.n === 1 ? 'cliente' : 'clientes'}">
+        <b>${d.n || ''}</b>
+        <i style="height:${d.n ? 14 + Math.round(46 * d.n / tope) : 4}px"></i>
+        <span>${i === 0 ? 'hoy' : 'DLMMJVS'[d.f.getDay()]}</span>
+        <em>${d.f.getDate()}</em>
+      </li>`).join('')}</ol>
+  </section>`;
+}
+
 function vistaHoy(){
   if (!DB.cuentasMadre.length && !DB.suscripciones.length) return vistaPrimerosPasos();
   const lista = tareas();
-  const b = bandeja(lista), pendientes = b.pendientes;
-  const r = resumenDinero();
-  const semana = directos(vencenEntre(2, 7)).length;
+  const b = bandeja(lista), n = b.pendientes;
+  const fecha = HOY.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' });
 
-  return `<div class="angosto">
-  <div class="hoy-cab">
-    <h1>${pendientes ? 'Hoy tenés ' + pendientes + (pendientes === 1 ? ' cosa' : ' cosas') + ' para hacer' : 'Todo al día'}</h1>
-    <span class="hoy-plata">Este mes: <b>${usd(r.ingreso)}</b> vendido · <b>${usd(r.margen)}</b> de ganancia</span>
+  return `<div class="tablero">
+  <div class="tablero-main">
+    <header class="hero-hoy${n ? '' : ' listo'}">
+      <span class="hero-num">${n || ico('check')}</span>
+      <div>
+        <span class="kicker">${esc(fecha.toUpperCase())}</span>
+        <h1>${n ? (n === 1 ? 'cosa para hacer hoy' : 'cosas para hacer hoy') : 'Todo al día'}</h1>
+      </div>
+    </header>
+    <label class="buscar">${ico('lupa')}<input id="pBusca" placeholder="Buscar cliente, teléfono o pedido SV-…" value="${esc(P.busca)}" autocomplete="off"></label>
+
+    ${P.busca.trim() ? resultadosBusqueda()
+      : lista.length ? `<ul class="tareas">${b.html}</ul>`
+      : `<div class="al-dia"><b>No hay nada pendiente</b><span>Cuando alguien pague, se le venza algo o algo no ande, te aparece acá.</span></div>`}
   </div>
-  <label class="buscar">${ico('lupa')}<input id="pBusca" placeholder="Buscar cliente, teléfono o pedido SV-…" value="${esc(P.busca)}" autocomplete="off"></label>
 
-  ${P.busca.trim() ? resultadosBusqueda()
-    : lista.length ? `<ul class="tareas">${b.html}</ul>`
-    : `<div class="al-dia">${ico('check')}<b>No hay nada pendiente</b><span>Cuando alguien pague, se le venza algo o algo no ande, te aparece acá.</span></div>`}
-
-  ${semana ? `<button class="mas-tarde" data-ir="clientes" data-filtro-ir="semana">En los próximos 7 días vencen ${semana} más →</button>` : ''}
-
-  <div class="libres">
-    <span>Pantallas libres para vender</span>
-    <div>${CAT.map(x => { const n = stockDisponible(x.id); return n
-      ? `<i>${esc(x.nombre)} <b>${n}</b></i>`
-      : `<button class="sin" data-cajon="madre" data-sid="${x.id}">${esc(x.nombre)} agotado · cargar</button>`; }).join('')}</div>
-  </div></div>`;
+  <aside class="tablero-lado">
+    ${ladoPlata()}
+    ${ladoStock()}
+    ${ladoSemana()}
+  </aside>
+  </div>`;
 }
 
 /* ═══ CLIENTES ══════════════════════════════════════════════════ */
